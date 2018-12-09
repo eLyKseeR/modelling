@@ -1,2 +1,3 @@
 # modelling
-modelling effort
+
+Using [Alloy](http://alloytools.org/) for lightweight modelling.
