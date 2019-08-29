@@ -1,0 +1,41 @@
+format 221
+"elykseer" // elykseer
+  revision 1
+  modified_by 21 "axeld"
+  // class settings
+  
+  classdiagramsettings member_max_width 0 end
+  
+  classcompositediagramsettings end
+  
+  usecasediagramsettings end
+  
+  sequencediagramsettings end
+  
+  collaborationdiagramsettings end
+  
+  objectdiagramsettings end
+  
+  objectcompositediagramsettings end
+  
+  componentdiagramsettings
+   end
+  
+  deploymentdiagramsettings
+   end
+  
+  statediagramsettings
+   end
+  
+  activitydiagramsettings
+   end
+  
+  idl_dir "/opt/SRC/src/uml2/elykseer-modelling.git/elykseer-uml2/idl"
+  package_ref 128021 // base
+
+  package_ref 128149 // cli
+
+  package_ref 128277 // gui
+
+  package_ref 128405 // native
+end

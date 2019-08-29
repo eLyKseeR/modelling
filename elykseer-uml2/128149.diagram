@@ -1,0 +1,34 @@
+format 221
+
+classcanvas 128021 class_ref 128277 // DbKey
+  classdiagramsettings member_max_width 0 end
+  xyz 155 114 2000
+end
+classcanvas 128149 class_ref 128917 // Key256
+  classdiagramsettings member_max_width 0 end
+  xyz 35 83 2000
+end
+classcanvas 128277 class_ref 129173 // DbCtrl
+  classdiagramsettings member_max_width 0 end
+  xyz 311 57 2000
+end
+classcanvas 128533 class_ref 129301 // DbKeyBlock
+  classdiagramsettings member_max_width 0 end
+  xyz 39 228 2000
+end
+relationcanvas 128405 relation_ref 129045 // <generalisation>
+  from ref 128021 z 2001 to ref 128277
+  no_role_a no_role_b
+  no_multiplicity_a no_multiplicity_b
+end
+relationcanvas 128661 relation_ref 129173 // <association>
+  from ref 128533 z 2001 stereotype "<<e>>" xyz 118 198 3000 to ref 128021
+  no_role_a no_role_b
+  no_multiplicity_a no_multiplicity_b
+end
+relationcanvas 128789 relation_ref 129301 // <association>
+  from ref 128149 z 2001 stereotype "<<k>>" xyz 105.5 121.5 3000 to ref 128021
+  no_role_a no_role_b
+  no_multiplicity_a no_multiplicity_b
+end
+end

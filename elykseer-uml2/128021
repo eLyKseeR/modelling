@@ -1,0 +1,936 @@
+format 221
+"base" // elykseer::base
+  revision 1
+  modified_by 21 "axeld"
+  // class settings
+  
+  classdiagramsettings member_max_width 0 end
+  
+  classcompositediagramsettings end
+  
+  usecasediagramsettings end
+  
+  sequencediagramsettings end
+  
+  collaborationdiagramsettings end
+  
+  objectdiagramsettings end
+  
+  objectcompositediagramsettings end
+  
+  componentdiagramsettings
+   end
+  
+  deploymentdiagramsettings
+   end
+  
+  statediagramsettings
+   end
+  
+  activitydiagramsettings
+   end
+  
+  idl_dir "/opt/SRC/src/uml2/elykseer-modelling.git/elykseer-uml2/idl"
+  classview 128021 "modules"
+    
+    classdiagramsettings member_max_width 0 end
+    
+    classcompositediagramsettings end
+    
+    collaborationdiagramsettings end
+    
+    objectdiagramsettings end
+    
+    objectcompositediagramsettings end
+    
+    sequencediagramsettings end
+    
+    statediagramsettings
+     end
+    
+    
+    activitydiagramsettings
+     end
+    associated_deployment_view deploymentview_ref 128021 // modules
+    classdiagram 128021 "backup"
+      classdiagramsettings draw_all_relations no show_members_full_definition yes show_members_multiplicity yes member_max_width 0 end
+      size A4
+    end
+
+    class 128021 "BackupCtrl"
+      visibility package 
+      cpp_decl ""
+      java_decl ""
+      php_decl ""
+      python_2_2 python_decl ""
+      idl_decl "${comment}${abstract}${custom}valuetype ${name}${inherit} {
+${members}};
+"
+      explicit_switch_type ""
+      mysql_decl ""
+      
+      operation 128021 "create"
+	class_operation public explicit_return_type ""
+	nparams 2
+	  param in name "o" type class_ref 128149 // Options
+	  param out name "" type class_ref 128021 // BackupCtrl
+	
+	
+	
+	
+	idl_decl "  ${comment}${oneway}${type} ${name}${(}${d0} ${t0} ${p0}, ${d1} ${t1} ${p1}${)}${raisesnl}${raises};
+"
+      end
+
+      operation 128149 "backup"
+	public explicit_return_type ""
+	nparams 1
+	  param in name "fn" explicit_type "string"
+	
+	
+	
+	
+	idl_decl "  ${comment}${oneway}${type} ${name}${(}${d0} ${t0} ${p0}${)}${raisesnl}${raises};
+"
+      end
+
+      operation 128277 "finalize"
+	public explicit_return_type ""
+	nparams 0
+	
+	
+	
+	
+	idl_decl "  ${comment}${oneway}${type} ${name}${(}${)}${raisesnl}${raises};
+"
+      end
+
+      operation 128405 "setReferences"
+	public explicit_return_type ""
+	nparams 2
+	  param in name "ks" type class_ref 128277 // DbKey
+	  param in name "fs" type class_ref 128405 // DbFp
+	
+	
+	
+	
+	idl_decl "  ${comment}${oneway}${type} ${name}${(}${d0} ${t0} ${p0}, ${d1} ${t1} ${p1}${)}${raisesnl}${raises};
+"
+      end
+
+      attribute 128021 "dbkey"
+	private type class_ref 128277 // DbKey
+	cpp_decl ""
+	java_decl ""
+	php_decl ""
+	python_decl ""
+	idl_decl "  ${comment}${visibility}${type} ${name};
+"
+	mysql_decl ""
+	MysqlColumn
+      end
+
+      attribute 128149 "dbfp"
+	private type class_ref 128405 // DbFp
+	cpp_decl ""
+	java_decl ""
+	php_decl ""
+	python_decl ""
+	idl_decl "  ${comment}${visibility}${type} ${name};
+"
+	mysql_decl ""
+	MysqlColumn
+      end
+
+      attribute 128277 "options"
+	private type class_ref 128149 // Options
+	cpp_decl ""
+	java_decl ""
+	php_decl ""
+	python_decl ""
+	idl_decl "  ${comment}${visibility}${type} ${name};
+"
+	mysql_decl ""
+	MysqlColumn
+      end
+
+      classrelation 128277 // <aggregation>
+	relation 128149 o---
+	  a role_name "" private
+	    idl "  ${comment}${visibility}${type} ${name};
+"
+	    classrelation_ref 128277 // <aggregation>
+	  b role_name "" private
+	    idl "  ${comment}${visibility}${type} ${name};
+"
+	    classrelation_ref 128405 // <aggregation>
+      end
+
+      classrelation 128533 // <aggregation>
+	relation 128277 o---
+	  a role_name "" private
+	    idl "  ${comment}${visibility}${type} ${name};
+"
+	    classrelation_ref 128533 // <aggregation>
+	  b role_name "" private
+	    idl "  ${comment}${visibility}${type} ${name};
+"
+	    classrelation_ref 128661 // <aggregation>
+      end
+
+      classrelation 128789 // <aggregation>
+	relation 128405 o---
+	  a role_name "" private
+	    idl "  ${comment}${visibility}${type} ${name};
+"
+	    classrelation_ref 128789 // <aggregation>
+	  b role_name "" private
+	    idl "  ${comment}${visibility}${type} ${name};
+"
+	    classrelation_ref 128917 // <aggregation>
+      end
+    end
+
+    class 128149 "Options"
+      visibility package 
+      cpp_decl ""
+      java_decl ""
+      php_decl ""
+      python_2_2 python_decl ""
+      idl_decl "${comment}${abstract}${custom}valuetype ${name}${inherit} {
+${members}};
+"
+      explicit_switch_type ""
+      mysql_decl ""
+      
+      classrelation 128405 // <aggregation>
+	relation_ref 128149 // <aggregation>
+      end
+
+      attribute 128405 "nchunks"
+	private explicit_type "int"
+	cpp_decl ""
+	java_decl ""
+	php_decl ""
+	python_decl ""
+	idl_decl "  ${comment}${visibility}${type} ${name};
+"
+	mysql_decl ""
+	MysqlColumn
+      end
+
+      attribute 128533 "redundancy"
+	private explicit_type "int"
+	cpp_decl ""
+	java_decl ""
+	php_decl ""
+	python_decl ""
+	idl_decl "  ${comment}${visibility}${type} ${name};
+"
+	mysql_decl ""
+	MysqlColumn
+      end
+
+      attribute 128661 "fpath_chunks"
+	private explicit_type "string"
+	cpp_decl ""
+	java_decl ""
+	php_decl ""
+	python_decl ""
+	idl_decl "  ${comment}${visibility}${type} ${name};
+"
+	mysql_decl ""
+	MysqlColumn
+      end
+
+      attribute 128789 "fpath_db"
+	private explicit_type "string"
+	cpp_decl ""
+	java_decl ""
+	php_decl ""
+	python_decl ""
+	idl_decl "  ${comment}${visibility}${type} ${name};
+"
+	mysql_decl ""
+	MysqlColumn
+      end
+
+      attribute 128917 "iscompressed"
+	private explicit_type "bool"
+	cpp_decl ""
+	java_decl ""
+	php_decl ""
+	python_decl ""
+	idl_decl "  ${comment}${visibility}${type} ${name};
+"
+	mysql_decl ""
+	MysqlColumn
+      end
+
+      attribute 129045 "deduplication"
+	private explicit_type "int"
+	cpp_decl ""
+	java_decl ""
+	php_decl ""
+	python_decl ""
+	idl_decl "  ${comment}${visibility}${type} ${name};
+"
+	mysql_decl ""
+	MysqlColumn
+      end
+    end
+
+    class 128277 "DbKey"
+      visibility package 
+      nformals 2
+      formal name "k" type "class" default_value class_ref 128917 // Key256
+        explicit_extends ""
+      formal name "e" type "class" default_value class_ref 129301 // DbKeyBlock
+        explicit_extends ""
+      nactuals 2
+      actual class class_ref 129173 // DbCtrl
+        rank 0 explicit_value ""
+      actual class class_ref 129173 // DbCtrl
+        rank 1 explicit_value ""
+      cpp_decl ""
+      java_decl ""
+      php_decl ""
+      python_2_2 python_decl ""
+      idl_decl "${comment}${abstract}${custom}valuetype ${name}${inherit} {
+${members}};
+"
+      explicit_switch_type ""
+      mysql_decl ""
+      
+      classrelation 128661 // <aggregation>
+	relation_ref 128277 // <aggregation>
+      end
+
+      classrelation 129685 // <generalisation>
+	relation 129045 ---|>
+	  a public
+	    idl "${type}"
+	    classrelation_ref 129685 // <generalisation>
+	  b parent class_ref 129173 // DbCtrl
+      end
+
+      classrelation 129941 // <association>
+	relation_ref 129173 // <association>
+      end
+
+      classrelation 130197 // <association>
+	relation_ref 129301 // <association>
+      end
+    end
+
+    class 128405 "DbFp"
+      visibility package 
+      nformals 2
+      formal name "k" type "class" default_value class_ref 128789 // Key128
+        explicit_extends ""
+      formal name "e" type "class" default_value class_ref 128533 // DbFpDat
+        explicit_extends ""
+      nactuals 2
+      actual class class_ref 129173 // DbCtrl
+        rank 0 explicit_value ""
+      actual class class_ref 129173 // DbCtrl
+        rank 1 explicit_value ""
+      cpp_decl ""
+      java_decl ""
+      php_decl ""
+      python_2_2 python_decl ""
+      idl_decl "${comment}${abstract}${custom}valuetype ${name}${inherit} {
+${members}};
+"
+      explicit_switch_type ""
+      mysql_decl ""
+      
+      classrelation 128917 // <aggregation>
+	relation_ref 128405 // <aggregation>
+      end
+
+      classrelation 130325 // <generalisation>
+	relation 129429 ---|>
+	  a public
+	    idl "${type}"
+	    classrelation_ref 130325 // <generalisation>
+	  b parent class_ref 129173 // DbCtrl
+      end
+
+      classrelation 130581 // <association>
+	relation_ref 129557 // <association>
+      end
+
+      classrelation 130837 // <association>
+	relation_ref 129685 // <association>
+      end
+    end
+
+    class 128533 "DbFpDat"
+      visibility package 
+      cpp_decl ""
+      java_decl ""
+      php_decl ""
+      python_2_2 python_decl ""
+      idl_decl "${comment}${abstract}${custom}valuetype ${name}${inherit} {
+${members}};
+"
+      explicit_switch_type ""
+      mysql_decl ""
+      
+      attribute 130197 "id"
+	private type class_ref 128789 // Key128
+	cpp_decl ""
+	java_decl ""
+	php_decl ""
+	python_decl ""
+	idl_decl "  ${comment}${visibility}${type} ${name};
+"
+	mysql_decl ""
+	MysqlColumn
+      end
+
+      attribute 130325 "len"
+	private explicit_type "int64"
+	cpp_decl ""
+	java_decl ""
+	php_decl ""
+	python_decl ""
+	idl_decl "  ${comment}${visibility}${type} ${name};
+"
+	mysql_decl ""
+	MysqlColumn
+      end
+
+      attribute 130453 "osusr"
+	private explicit_type "string"
+	cpp_decl ""
+	java_decl ""
+	php_decl ""
+	python_decl ""
+	idl_decl "  ${comment}${visibility}${type} ${name};
+"
+	mysql_decl ""
+	MysqlColumn
+      end
+
+      attribute 130581 "osgrp"
+	private explicit_type "string"
+	cpp_decl ""
+	java_decl ""
+	php_decl ""
+	python_decl ""
+	idl_decl "  ${comment}${visibility}${type} ${name};
+"
+	mysql_decl ""
+	MysqlColumn
+      end
+
+      attribute 130709 "osattr"
+	private explicit_type "string"
+	cpp_decl ""
+	java_decl ""
+	php_decl ""
+	python_decl ""
+	idl_decl "  ${comment}${visibility}${type} ${name};
+"
+	mysql_decl ""
+	MysqlColumn
+      end
+
+      attribute 130837 "checksum"
+	private type class_ref 128917 // Key256
+	cpp_decl ""
+	java_decl ""
+	php_decl ""
+	python_decl ""
+	idl_decl "  ${comment}${visibility}${type} ${name};
+"
+	mysql_decl ""
+	MysqlColumn
+      end
+
+      classrelation 129045 // <aggregation>
+	relation 128533 o---
+	  a role_name "" multiplicity "*" private
+	    idl "  ${comment}${visibility}${stereotype}<${type}> ${name};
+"
+	    classrelation_ref 129045 // <aggregation>
+	  b role_name "" private
+	    idl "  ${comment}${visibility}${type} ${name};
+"
+	    classrelation_ref 129173 // <aggregation>
+      end
+
+      attribute 130965 "blocks"
+	private type class_ref 128661 // DbFpBlock
+	multiplicity "*"
+	cpp_decl ""
+	java_decl ""
+	php_decl ""
+	python_decl ""
+	idl_decl "  ${comment}${readonly}${attribute}${stereotype}<${type}> ${name};
+"
+	mysql_decl ""
+	MysqlColumn
+      end
+
+      classrelation 130453 // <association>
+	relation 129557 ----
+	  stereotype "e"
+	  a role_name "" private
+	    idl "  ${comment}${visibility}${type} ${name};
+"
+	    classrelation_ref 130453 // <association>
+	  b role_name "" private
+	    idl "  ${comment}${visibility}${type} ${name};
+"
+	    classrelation_ref 130581 // <association>
+      end
+    end
+
+    class 128661 "DbFpBlock"
+      visibility package 
+      cpp_decl ""
+      java_decl ""
+      php_decl ""
+      python_2_2 python_decl ""
+      idl_decl "${comment}${abstract}${custom}valuetype ${name}${inherit} {
+${members}};
+"
+      explicit_switch_type ""
+      mysql_decl ""
+      
+      attribute 129173 "idx"
+	private explicit_type "int"
+	cpp_decl ""
+	java_decl ""
+	php_decl ""
+	python_decl ""
+	idl_decl "  ${comment}${visibility}${type} ${name};
+"
+	mysql_decl ""
+	MysqlColumn
+      end
+
+      attribute 129301 "apos"
+	private explicit_type "int"
+	cpp_decl ""
+	java_decl ""
+	php_decl ""
+	python_decl ""
+	idl_decl "  ${comment}${visibility}${type} ${name};
+"
+	mysql_decl ""
+	MysqlColumn
+      end
+
+      attribute 129429 "fpos"
+	private explicit_type "int64"
+	cpp_decl ""
+	java_decl ""
+	php_decl ""
+	python_decl ""
+	idl_decl "  ${comment}${visibility}${type} ${name};
+"
+	mysql_decl ""
+	MysqlColumn
+      end
+
+      attribute 129557 "blen"
+	private explicit_type "int"
+	cpp_decl ""
+	java_decl ""
+	php_decl ""
+	python_decl ""
+	idl_decl "  ${comment}${visibility}${type} ${name};
+"
+	mysql_decl ""
+	MysqlColumn
+      end
+
+      attribute 129685 "clen"
+	private explicit_type "int"
+	cpp_decl ""
+	java_decl ""
+	php_decl ""
+	python_decl ""
+	idl_decl "  ${comment}${visibility}${type} ${name};
+"
+	mysql_decl ""
+	MysqlColumn
+      end
+
+      attribute 129813 "compressed"
+	private explicit_type "bool"
+	cpp_decl ""
+	java_decl ""
+	php_decl ""
+	python_decl ""
+	idl_decl "  ${comment}${visibility}${type} ${name};
+"
+	mysql_decl ""
+	MysqlColumn
+      end
+
+      attribute 129941 "checksum"
+	private type class_ref 128789 // Key128
+	cpp_decl ""
+	java_decl ""
+	php_decl ""
+	python_decl ""
+	idl_decl "  ${comment}${visibility}${type} ${name};
+"
+	mysql_decl ""
+	MysqlColumn
+      end
+
+      attribute 130069 "aid"
+	private type class_ref 128917 // Key256
+	cpp_decl ""
+	java_decl ""
+	php_decl ""
+	python_decl ""
+	idl_decl "  ${comment}${visibility}${type} ${name};
+"
+	mysql_decl ""
+	MysqlColumn
+      end
+
+      classrelation 129173 // <aggregation>
+	relation_ref 128533 // <aggregation>
+      end
+    end
+
+    class 128789 "Key128"
+      visibility package 
+      cpp_decl ""
+      java_decl ""
+      php_decl ""
+      python_2_2 python_decl ""
+      idl_decl "${comment}${abstract}${custom}valuetype ${name}${inherit} {
+${members}};
+"
+      explicit_switch_type ""
+      mysql_decl ""
+      
+      classrelation 129429 // <generalisation>
+	relation 128789 ---|>
+	  a public
+	    idl "${type}"
+	    classrelation_ref 129429 // <generalisation>
+	  b parent class_ref 129045 // Key
+      end
+
+      classrelation 130709 // <association>
+	relation 129685 ----
+	  stereotype "k"
+	  a role_name "" private
+	    idl "  ${comment}${visibility}${type} ${name};
+"
+	    classrelation_ref 130709 // <association>
+	  b role_name "" private
+	    idl "  ${comment}${visibility}${type} ${name};
+"
+	    classrelation_ref 130837 // <association>
+      end
+    end
+
+    class 128917 "Key256"
+      visibility package 
+      cpp_decl ""
+      java_decl ""
+      php_decl ""
+      python_2_2 python_decl ""
+      idl_decl "${comment}${abstract}${custom}valuetype ${name}${inherit} {
+${members}};
+"
+      explicit_switch_type ""
+      mysql_decl ""
+      
+      classrelation 129557 // <generalisation>
+	relation 128917 ---|>
+	  a public
+	    idl "${type}"
+	    classrelation_ref 129557 // <generalisation>
+	  b parent class_ref 129045 // Key
+      end
+
+      classrelation 130069 // <association>
+	relation 129301 ----
+	  stereotype "k"
+	  a role_name "" private
+	    idl "  ${comment}${visibility}${type} ${name};
+"
+	    classrelation_ref 130069 // <association>
+	  b role_name "" private
+	    idl "  ${comment}${visibility}${type} ${name};
+"
+	    classrelation_ref 130197 // <association>
+      end
+    end
+
+    class 129045 "Key"
+      abstract visibility package 
+      cpp_decl ""
+      java_decl ""
+      php_decl ""
+      python_2_2 python_decl ""
+      idl_decl "${comment}${abstract}${custom}valuetype ${name}${inherit} {
+${members}};
+"
+      explicit_switch_type ""
+      mysql_decl ""
+      
+      operation 128533 "create"
+	class_operation public explicit_return_type ""
+	nparams 1
+	  param out name "" type class_ref 129045 // Key
+	
+	
+	
+	
+	idl_decl "  ${comment}${oneway}${type} ${name}${(}${d0} ${t0} ${p0}${)}${raisesnl}${raises};
+"
+      end
+
+      operation 128661 "length"
+	public explicit_return_type ""
+	nparams 1
+	  param out name "" explicit_type "int"
+	
+	
+	
+	
+	idl_decl "  ${comment}${oneway}${type} ${name}${(}${d0} ${t0} ${p0}${)}${raisesnl}${raises};
+"
+      end
+
+      operation 128789 "toHex"
+	public explicit_return_type ""
+	nparams 1
+	  param out name "" explicit_type "string"
+	
+	
+	
+	
+	idl_decl "  ${comment}${oneway}${type} ${name}${(}${d0} ${t0} ${p0}${)}${raisesnl}${raises};
+"
+      end
+
+      operation 128917 "fromHex"
+	class_operation public explicit_return_type ""
+	nparams 2
+	  param in name "" explicit_type "string"
+	  param out name "" type class_ref 129045 // Key
+	
+	
+	
+	
+	idl_decl "  ${comment}${oneway}${type} ${name}${(}${d0} ${t0} ${p0}, ${d1} ${t1} ${p1}${)}${raisesnl}${raises};
+"
+      end
+    end
+
+    classdiagram 128149 "database of keys"
+      classdiagramsettings show_members_full_definition yes member_max_width 0 end
+      size A4
+    end
+
+    classdiagram 128277 "database of filepaths"
+      classdiagramsettings show_members_full_definition yes member_max_width 0 end
+      size A4
+    end
+
+    class 129173 "DbCtrl"
+      abstract visibility package 
+      nformals 2
+      formal name "k" type "class" explicit_default_value ""
+        explicit_extends ""
+      formal name "e" type "class" explicit_default_value ""
+        explicit_extends ""
+      cpp_decl ""
+      java_decl ""
+      php_decl ""
+      python_2_2 python_decl ""
+      idl_decl "${comment}${abstract}${custom}valuetype ${name}${inherit} {
+${members}};
+"
+      explicit_switch_type ""
+      mysql_decl ""
+      
+      operation 129045 "contains"
+	cpp_inline public explicit_return_type ""
+	nparams 2
+	  param in name "" explicit_type "k"
+	  param out name "" explicit_type "bool"
+	
+	
+	
+	
+	idl_decl "  ${comment}${oneway}${type} ${name}${(}${d0} ${t0} ${p0}, ${d1} ${t1} ${p1}${)}${raisesnl}${raises};
+"
+      end
+
+      operation 129173 "get"
+	cpp_inline public explicit_return_type ""
+	nparams 2
+	  param in name "" explicit_type "k"
+	  param out name "" explicit_type "e"
+	
+	
+	
+	
+	idl_decl "  ${comment}${oneway}${type} ${name}${(}${d0} ${t0} ${p0}, ${d1} ${t1} ${p1}${)}${raisesnl}${raises};
+"
+      end
+
+      operation 129301 "set"
+	cpp_inline public explicit_return_type ""
+	nparams 2
+	  param in name "" explicit_type "k"
+	  param in name "" explicit_type "e"
+	
+	
+	
+	
+	idl_decl "  ${comment}${oneway}${type} ${name}${(}${d0} ${t0} ${p0}, ${d1} ${t1} ${p1}${)}${raisesnl}${raises};
+"
+      end
+
+      operation 129429 "count"
+	cpp_inline public explicit_return_type ""
+	nparams 1
+	  param out name "" explicit_type "int"
+	
+	
+	
+	
+	idl_decl "  ${comment}${oneway}${type} ${name}${(}${d0} ${t0} ${p0}${)}${raisesnl}${raises};
+"
+      end
+
+      operation 129557 "union"
+	cpp_inline public explicit_return_type ""
+	nparams 1
+	  param in name "" type class_ref 129173 // DbCtrl
+	
+	
+	
+	
+	idl_decl "  ${comment}${oneway}${type} ${name}${(}${d0} ${t0} ${p0}${)}${raisesnl}${raises};
+"
+      end
+
+      operation 129685 "appKeys"
+	cpp_inline public explicit_return_type ""
+	nparams 1
+	  param in name "fun" explicit_type ""
+	
+	
+	
+	
+	idl_decl "  ${comment}${oneway}${type} ${name}${(}${d0} ${t0} ${p0}${)}${raisesnl}${raises};
+"
+	comment "call function 'fun' on every key"
+      end
+
+      operation 129813 "appValues"
+	cpp_inline public explicit_return_type ""
+	nparams 1
+	  param in name "fun" explicit_type ""
+	
+	
+	
+	
+	idl_decl "  ${comment}${oneway}${type} ${name}${(}${d0} ${t0} ${p0}${)}${raisesnl}${raises};
+"
+	comment "call function 'fun' on every pair (key, element)"
+      end
+    end
+
+    class 129301 "DbKeyBlock"
+      visibility package 
+      cpp_decl ""
+      java_decl ""
+      php_decl ""
+      python_2_2 python_decl ""
+      idl_decl "${comment}${abstract}${custom}valuetype ${name}${inherit} {
+${members}};
+"
+      explicit_switch_type ""
+      mysql_decl ""
+      
+      classrelation 129813 // <association>
+	relation 129173 ----
+	  stereotype "e"
+	  a role_name "" private
+	    idl "  ${comment}${visibility}${type} ${name};
+"
+	    classrelation_ref 129813 // <association>
+	  b role_name "" private
+	    idl "  ${comment}${visibility}${type} ${name};
+"
+	    classrelation_ref 129941 // <association>
+      end
+
+      attribute 131093 "key"
+	private type class_ref 128917 // Key256
+	cpp_decl ""
+	java_decl ""
+	php_decl ""
+	python_decl ""
+	idl_decl "  ${comment}${visibility}${type} ${name};
+"
+	mysql_decl ""
+	MysqlColumn
+      end
+
+      attribute 131221 "iv"
+	private type class_ref 128917 // Key256
+	cpp_decl ""
+	java_decl ""
+	php_decl ""
+	python_decl ""
+	idl_decl "  ${comment}${visibility}${type} ${name};
+"
+	mysql_decl ""
+	MysqlColumn
+      end
+
+      attribute 131349 "n"
+	private explicit_type "int"
+	cpp_decl ""
+	java_decl ""
+	php_decl ""
+	python_decl ""
+	idl_decl "  ${comment}${visibility}${type} ${name};
+"
+	mysql_decl ""
+	MysqlColumn
+      end
+    end
+  end
+
+  deploymentview 128021 "modules"
+    //deployment diagram settings
+    deploymentdiagramsettings
+     end
+    artifact 128021 "DbFpDat"
+      stereotype "source"
+      idl_src "#ifndef ${MODULE}_${NAME}_H
+#define ${MODULE}_${NAME}_H
+
+${comment}
+${includes}
+${module_start}
+${definition}
+${module_end}
+#endif
+"
+      associated_elems
+	class_ref 128533 // DbFpDat
+      end
+    end
+  end
+end
