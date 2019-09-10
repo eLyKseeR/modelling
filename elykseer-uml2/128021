@@ -1,6 +1,6 @@
 format 221
 "base" // elykseer::base
-  revision 1
+  revision 2
   modified_by 21 "axeld"
   // class settings
   
@@ -909,6 +909,11 @@ ${members}};
 	mysql_decl ""
 	MysqlColumn
       end
+    end
+
+    classdiagram 134805 "keys"
+      classdiagramsettings member_max_width 0 end
+      size A4
     end
   end
 
