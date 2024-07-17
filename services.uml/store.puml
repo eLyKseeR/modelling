@@ -1,0 +1,49 @@
+@startuml
+
+!include ../relations.uml/assembly.puml!0
+!include ../relations.uml/filesupport.puml
+
+interface STORE {
+    K: Type
+    V: Type
+    {field} KVs = list (K * V)
+    {field} R = store KVs
+    init(): configuration -> R
+    add(): K -> V -> R -> R
+    find(): K -> R -> option V
+    find_all(): K -> R -> list V
+}
+
+class KeyListStore
+STORE <|--- KeyListStore
+
+class FileinformationStore
+STORE <|--- FileinformationStore
+
+class FBlockListStore
+STORE <|--- FBlockListStore
+
+class KeyListStore {
+    K = aid_t
+    V = keyinformation
+}
+
+KeyListStore o-- keyinformation
+
+class FileinformationStore {
+    K = string
+    V = fileinformation
+}
+
+FileinformationStore o-- fileinformation
+
+class FBlockListStore {
+    K = string
+    V = blockinformation
+}
+
+FBlockListStore o-- "many" blockinformation
+
+remove assemblyinformation
+
+@enduml

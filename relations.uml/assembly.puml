@@ -1,0 +1,101 @@
+reflects in Coq: theories/Assembly.v
+
+@startuml
+
+!theme sunlust
+
+class assemblyinformation {
+    aid: PK<aid_t>
+    nchunks: int
+    apos: int
+}
+
+class keyinformation {
+    aid: PK<aid_t>
+    ivec: Key128
+    pkey: Key256
+    localnchunks: int
+}
+
+'note right of keyinformation::aid
+'    primary key
+'end note
+
+class blockinformation {
+    blockid: int
+    bchecksum: Key256
+    blocksize: int
+    filepos: int
+    blockaid: aid_t
+    blockapos: int
+}
+
+@enduml
+
+@startuml
+
+!theme sunlust
+
+!include assembly.puml!0
+
+interface ASS {
+    A: assemblyinformation
+    B: Buffer
+    this: A * B
+    create(configuration) -> this
+    buffer_len() -> int
+    calc_checksum() -> Key256
+    ----
+    encrypt()
+    restore()
+    ----
+    decrypt()
+    extract()
+    recall()
+    ----
+    finish()
+    backup()
+}
+
+ASS *-left- assemblyinformation
+
+ASS <|--- AssemblyPlainWritable
+ASS <|--- AssemblyEncrypted
+ASS <|--- AssemblyPlainFull
+
+class AssemblyPlainWritable {
+    backup(fpos: int, Buffer) -> AssemblyPlainWritable
+    finish() -> AssemblyPlainFull
+}
+
+class AssemblyPlainFull {
+    encrypt(keyinformation) -> AssemblyEncrypted
+    restore(blockinformation) -> Buffer
+}
+keyinformation --- AssemblyPlainFull
+blockinformation --- AssemblyPlainFull
+
+class AssemblyEncrypted {
+    decrypt(keyinformation) -> AssemblyPlainFull
+    extract(configuration) -> int
+    recall(configuration) -> option AssemblyEncrypted
+}
+keyinformation --- AssemblyEncrypted
+
+@enduml
+
+@startuml
+
+!theme sunlust
+
+[*] --> AssemblyPlainWritable : create empty
+AssemblyPlainWritable --> AssemblyPlainWritable : backup block
+AssemblyPlainWritable --> AssemblyPlainFull : finish
+AssemblyPlainFull --> AssemblyPlainFull : restore block
+AssemblyPlainFull --> AssemblyEncrypted : encrypt
+AssemblyEncrypted --> AssemblyPlainFull : decrypt
+[*] --> AssemblyEncrypted : recall from chunks
+AssemblyEncrypted --> [*] : extract chunks
+
+
+@enduml
