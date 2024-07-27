@@ -1,6 +1,6 @@
 reflects in Coq: theories/Assembly.v
 
-@startuml
+@startuml assembly data
 
 !theme sunlust
 
@@ -22,6 +22,8 @@ class keyinformation {
 'end note
 
 class blockinformation {
+    bfhash: Key256
+    bsnapshot: int
     blockid: int
     bchecksum: Key256
     blocksize: int
@@ -32,7 +34,7 @@ class blockinformation {
 
 @enduml
 
-@startuml
+@startuml assembly modules
 
 !theme sunlust
 
@@ -60,8 +62,8 @@ interface ASS {
 ASS *-left- assemblyinformation
 
 ASS <|--- AssemblyPlainWritable
-ASS <|--- AssemblyEncrypted
 ASS <|--- AssemblyPlainFull
+ASS <|--- AssemblyEncrypted
 
 class AssemblyPlainWritable {
     backup(fpos: int, Buffer) -> AssemblyPlainWritable
@@ -72,19 +74,19 @@ class AssemblyPlainFull {
     encrypt(keyinformation) -> AssemblyEncrypted
     restore(blockinformation) -> Buffer
 }
-keyinformation --- AssemblyPlainFull
-blockinformation --- AssemblyPlainFull
+AssemblyPlainFull -down-- blockinformation
+AssemblyPlainFull -down-- keyinformation
 
 class AssemblyEncrypted {
     decrypt(keyinformation) -> AssemblyPlainFull
     extract(configuration) -> int
     recall(configuration) -> option AssemblyEncrypted
 }
-keyinformation --- AssemblyEncrypted
+AssemblyEncrypted -down-- keyinformation
 
 @enduml
 
-@startuml
+@startuml assembly state transitions
 
 !theme sunlust
 

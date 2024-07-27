@@ -2,6 +2,7 @@
 
 !include ../relations.uml/assembly.puml!0
 !include ../relations.uml/filesupport.puml
+!include ../relations.uml/snapshot.puml
 
 interface STORE {
     K: Type
@@ -20,6 +21,9 @@ STORE <|--- KeyListStore
 class FileinformationStore
 STORE <|--- FileinformationStore
 
+class FSnapshotStore
+STORE <|--- FSnapshotStore
+
 class FBlockListStore
 STORE <|--- FBlockListStore
 
@@ -31,18 +35,28 @@ class KeyListStore {
 KeyListStore o-- keyinformation
 
 class FileinformationStore {
-    K = string
+    K = fhash
     V = fileinformation
 }
 
 FileinformationStore o-- fileinformation
 
+class FSnapshotStore {
+    K = timestamp
+    V = snapshot
+}
+
+FSnapshotStore o-- "many" snapshot
+
 class FBlockListStore {
-    K = string
+    K = fhash
     V = blockinformation
 }
 
 FBlockListStore o-- "many" blockinformation
+
+blockinformation::bsnapshot .left. snapshot
+fileinformation::fsnapshot .right. snapshot
 
 remove assemblyinformation
 

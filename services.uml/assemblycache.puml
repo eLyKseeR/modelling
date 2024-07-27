@@ -1,0 +1,50 @@
+' reflects in Coq: theories/AssemblyCache.v
+
+@startuml assemblycache
+
+!theme sunlust
+
+class assemblycache {
+    acenvs: list EnvironmentReadable
+    acsize: int
+    acwriteenv: EnvironmentWritable
+    acconfig: configuration
+    acwriteq: writequeue
+    acreadq: readqueue
+    acfbstore: FBlockListStore
+    ackstore: KeyListStore
+    acfistore: FileinformationStore
+
+    prepare_assemblycache()
+    enqueue_readrequest()
+    enqueue_writerequest()
+    ----
+    flush()
+    close()
+    
+}
+
+@enduml
+
+
+@startuml assemblycache modules
+
+!theme sunlust
+
+!include ./assemblycache.puml!0
+!include ../services.uml/environment.puml!0
+
+assemblycache::acenvs .left. "many" EnvironmentReadable
+assemblycache::acwriteenv .. "1" EnvironmentWritable
+
+assemblycache::acfbstore .right. "1" FBlockListStore
+assemblycache::ackstore .. "1" KeyListStore
+assemblycache::acfistore .. "1" FileinformationStore
+
+remove ENV 
+remove assemblyinformation
+remove environment 
+remove keyinformation
+remove blockinformation
+
+@enduml
