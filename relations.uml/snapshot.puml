@@ -1,0 +1,16 @@
+@startuml snapshot
+
+!theme sunlust
+
+class snapshot {
+    sptimestamp: PK<int>
+    spendtime: int
+    sphost: string
+    spuser: string
+}
+
+' note right of snapshot::sptimestamp
+'     resolution < 1 ms
+' end note
+
+@enduml

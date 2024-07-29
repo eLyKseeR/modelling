@@ -1,0 +1,55 @@
+' reflects in Coq: theories/Environment.v
+@startuml environment
+!include ../relations.uml/assembly.puml!0
+
+class environment<AB> {
+    cur_assembly: assemblyinformation
+    cur_buffer: AB
+    econfig: configuration
+}
+
+environment --- assemblyinformation
+
+remove keyinformation
+remove blockinformation
+
+@enduml
+
+@startuml environment model
+
+!include ../relations.uml/filesupport.puml
+
+interface ENV {
+    AB: Type
+    E = environment<AB>
+}
+
+class EnvironmentWritable
+ENV <|--- EnvironmentWritable
+
+class EnvironmentReadable
+ENV <|--- EnvironmentReadable
+
+class EnvironmentWritable {
+    AB = AssemblyPlainWritable
+    E = environment<AB>
+    initial_environment() configuration -> E
+    recreate_assembly() -> E
+    finalise_assembly() -> option (aid_t * keyinformation)
+    backup(fp: string, fpos: int, Buffer) -> blockinformation * option (aid_t * keyinformation)
+}
+
+EnvironmentWritable --- keyinformation
+EnvironmentWritable --- blockinformation
+
+class EnvironmentReadable {
+    AB = AssemblyPlainFull
+    E = environment<AB>
+    restore_assembly(aid_t, keyinformation) -> E
+}
+
+EnvironmentReadable --- keyinformation
+
+remove fileinformation
+
+@enduml

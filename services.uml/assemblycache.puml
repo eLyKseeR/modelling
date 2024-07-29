@@ -1,0 +1,97 @@
+' reflects in Coq: theories/AssemblyCache.v
+
+@startuml assemblycache
+
+!theme sunlust
+
+class assemblycache {
+    acenvs: list EnvironmentReadable
+    acsize: int
+    acwriteenv: EnvironmentWritable
+    acconfig: configuration
+    acwriteq: writequeue
+    acreadq: readqueue
+    acfbstore: FBlockListStore
+    ackstore: KeyListStore
+    acfistore: FileinformationStore
+
+    prepare_assemblycache()
+    enqueue_readrequest()
+    enqueue_writerequest()
+    ----
+    flush()
+    close()
+
+}
+
+@enduml
+
+
+@startuml assemblycache modules
+
+!theme sunlust
+
+!include ./assemblycache.puml!0
+!include ../services.uml/environment.puml!0
+
+assemblycache::acenvs .left. "many" EnvironmentReadable
+assemblycache::acwriteenv .. "1" EnvironmentWritable
+
+assemblycache::acfbstore .right. "1" FBlockListStore
+assemblycache::ackstore .. "1" KeyListStore
+assemblycache::acfistore .. "1" FileinformationStore
+
+remove ENV 
+remove assemblyinformation
+remove environment 
+remove keyinformation
+remove blockinformation
+
+@enduml
+
+@startuml asssemblycache write usage
+
+!theme sunlust
+
+Client -> AssemblyCache : prepare_assemblycache()
+AssemblyCache -> EnvironmentWritable : initial_environment()
+group repeat
+    Client -> AssemblyCache : enqueue_writerequest()
+    group when assembly full
+        AssemblyCache -> EnvironmentWritable : finalise_and_recreate_assembly()
+        AssemblyCache -> KeyListStore : add_key()
+    end
+end
+Client -> AssemblyCache : flush()
+AssemblyCache -> EnvironmentWritable : finalise_and_recreate_assembly()
+AssemblyCache -> KeyListStore : add_key()
+
+@enduml
+
+@startuml asssemblycache read usage
+
+!theme sunlust
+
+Client -> AssemblyCache : prepare_assemblycache()
+AssemblyCache -> EnvironmentReadable : initial_environment()
+group repeat
+    Client -> AssemblyCache : enqueue_readrequest()
+    group when queue full
+        Client -> AssemblyCache : iterate_read_queue()
+        group repeat for each assembly
+            AssemblyCache -> AssemblyCache : ensure_assembly()
+            alt assembly in cache
+                AssemblyCache -> AssemblyCache
+            else assembly recalled
+                AssemblyCache -> KeyListStore : find_key()
+                AssemblyCache -> EnvironmentReadable : restore_assembly()
+            end
+            group run in parallel for all blocks in assembly
+                AssemblyCache -> EnvironmentReadable : read_block()
+            end
+        end
+    end
+end
+Client -> AssemblyCache : close()
+
+@enduml

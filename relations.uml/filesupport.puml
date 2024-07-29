@@ -1,0 +1,20 @@
+@startuml file information
+
+!theme sunlust
+
+class fileinformation {
+    filehash: PK<Key256>
+    fsnapshot: int
+    fname: string
+    fsize: int
+    fowner: string
+    fpermissions: int
+    fmodified: string
+    fchecksum: Key256
+}
+
+' note right of RelFileinformation::filehash
+'     primary key
+' end note
+
+@enduml

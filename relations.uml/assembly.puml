@@ -1,0 +1,112 @@
+reflects in Coq: theories/Assembly.v
+
+@startuml assemblyinformation
+
+!theme sunlust
+
+class assemblyinformation {
+    aid: PK<aid_t>
+    nchunks: int
+    apos: int
+}
+@enduml
+
+@startuml keyinformation
+
+!theme sunlust
+
+class keyinformation {
+    aid: PK<aid_t>
+    ivec: Key128
+    pkey: Key256
+    localnchunks: int
+}
+
+'note right of keyinformation::aid
+'    primary key
+'end note
+@enduml
+
+@startuml blockinformation
+
+!theme sunlust
+
+class blockinformation {
+    bfhash: Key256
+    bsnapshot: int
+    blockid: int
+    bchecksum: Key256
+    blocksize: int
+    filepos: int
+    blockaid: aid_t
+    blockapos: int
+}
+@enduml
+
+@startuml assembly modules
+
+!theme sunlust
+
+!include assembly.puml!0
+
+interface ASS {
+    A: assemblyinformation
+    B: Buffer
+    this: A * B
+    create(configuration) -> this
+    buffer_len() -> int
+    calc_checksum() -> Key256
+    ----
+    encrypt()
+    restore()
+    ----
+    decrypt()
+    extract()
+    recall()
+    ----
+    finish()
+    backup()
+}
+
+ASS *-left- assemblyinformation
+
+ASS <|--- AssemblyPlainWritable
+ASS <|--- AssemblyPlainFull
+ASS <|--- AssemblyEncrypted
+
+class AssemblyPlainWritable {
+    backup(fpos: int, Buffer) -> AssemblyPlainWritable
+    finish() -> AssemblyPlainFull
+}
+
+class AssemblyPlainFull {
+    encrypt(keyinformation) -> AssemblyEncrypted
+    restore(blockinformation) -> Buffer
+}
+AssemblyPlainFull -down-- blockinformation
+AssemblyPlainFull -down-- keyinformation
+
+class AssemblyEncrypted {
+    decrypt(keyinformation) -> AssemblyPlainFull
+    extract(configuration) -> int
+    recall(configuration) -> option AssemblyEncrypted
+}
+AssemblyEncrypted -down-- keyinformation
+
+@enduml
+
+@startuml assembly state transitions
+
+!theme sunlust
+
+[*] --> AssemblyPlainWritable : create empty
+AssemblyPlainWritable --> AssemblyPlainWritable : backup block
+AssemblyPlainWritable --> AssemblyPlainFull : finish
+AssemblyPlainFull --> AssemblyPlainFull : restore block
+AssemblyPlainFull --> AssemblyEncrypted : encrypt
+AssemblyEncrypted --> AssemblyPlainFull : decrypt
+[*] --> AssemblyEncrypted : recall from chunks
+AssemblyEncrypted --> [*] : extract chunks
+
+
+@enduml

@@ -1,0 +1,22 @@
+@startuml data relations
+
+!theme sunlust
+
+object file
+object fhash
+
+file --right-> fhash
+
+object aid
+fhash --right-> aid
+
+object fileinformation
+fhash --down-> fileinformation
+
+object "key pair" as key
+aid --up-> key
+
+object cid
+aid --down-> cid
+
+@enduml
