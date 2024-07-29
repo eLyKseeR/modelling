@@ -21,7 +21,7 @@ class assemblycache {
     ----
     flush()
     close()
-    
+
 }
 
 @enduml
@@ -46,5 +46,52 @@ remove assemblyinformation
 remove environment 
 remove keyinformation
 remove blockinformation
+
+@enduml
+
+@startuml asssemblycache write usage
+
+!theme sunlust
+
+Client -> AssemblyCache : prepare_assemblycache()
+AssemblyCache -> EnvironmentWritable : initial_environment()
+group repeat
+    Client -> AssemblyCache : enqueue_writerequest()
+    group when assembly full
+        AssemblyCache -> EnvironmentWritable : finalise_and_recreate_assembly()
+        AssemblyCache -> KeyListStore : add_key()
+    end
+end
+Client -> AssemblyCache : flush()
+AssemblyCache -> EnvironmentWritable : finalise_and_recreate_assembly()
+AssemblyCache -> KeyListStore : add_key()
+
+@enduml
+
+@startuml asssemblycache read usage
+
+!theme sunlust
+
+Client -> AssemblyCache : prepare_assemblycache()
+AssemblyCache -> EnvironmentReadable : initial_environment()
+group repeat
+    Client -> AssemblyCache : enqueue_readrequest()
+    group when queue full
+        Client -> AssemblyCache : iterate_read_queue()
+        group repeat for each assembly
+            AssemblyCache -> AssemblyCache : ensure_assembly()
+            alt assembly in cache
+                AssemblyCache -> AssemblyCache
+            else assembly recalled
+                AssemblyCache -> KeyListStore : find_key()
+                AssemblyCache -> EnvironmentReadable : restore_assembly()
+            end
+            group run in parallel for all blocks in assembly
+                AssemblyCache -> EnvironmentReadable : read_block()
+            end
+        end
+    end
+end
+Client -> AssemblyCache : close()
 
 @enduml

@@ -48,11 +48,14 @@ Stores additional information about a backup run (snapshot).
 
 K = timestamp (requires good resolution, below 1 s)
 
+![snapshot](./out/relations.uml/snapshot/snapshot.png)
+
 ```sql
 CREATE TABLE snapshot {
     sptimestamp TIMESTAMP PRIMARY KEY NOT NULL,
-    sphost VARCHAR NOT NULL,
-    spuser VARCHAR NOT NULL,
+    spendtime TIMESTAMP,
+    sphost VARCHAR,
+    spuser VARCHAR,
 };
 ```
 
@@ -61,6 +64,8 @@ CREATE TABLE snapshot {
 Stores the blocks of a file.
 
 K = fhash (which is a Key256; 64 chars hex representation)
+
+![blockinformation](./out/relations.uml/assembly/blockinformation.png)
 
 ```sql
 CREATE TABLE blockinformation {

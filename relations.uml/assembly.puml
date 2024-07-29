@@ -1,6 +1,6 @@
 reflects in Coq: theories/Assembly.v
 
-@startuml assembly data
+@startuml assemblyinformation
 
 !theme sunlust
 
@@ -9,6 +9,11 @@ class assemblyinformation {
     nchunks: int
     apos: int
 }
+@enduml
+
+@startuml keyinformation
+
+!theme sunlust
 
 class keyinformation {
     aid: PK<aid_t>
@@ -20,6 +25,11 @@ class keyinformation {
 'note right of keyinformation::aid
 '    primary key
 'end note
+@enduml
+
+@startuml blockinformation
+
+!theme sunlust
 
 class blockinformation {
     bfhash: Key256
@@ -31,7 +41,6 @@ class blockinformation {
     blockaid: aid_t
     blockapos: int
 }
-
 @enduml
 
 @startuml assembly modules

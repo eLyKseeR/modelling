@@ -2,7 +2,7 @@
 
 File data is entered into assemblies in a non-local way and the assembly is then encrypted with strong cryptographic keys.
 
-![Assembly lifecycle](./out/relations.uml/assembly/assembly-2.png)
+![Assembly lifecycle](./out/relations.uml/assembly/assembly%20state%20transitions.png)
 
 ## Assembly states
 An assembly can be in one of three states.
@@ -30,7 +30,7 @@ Or, it can be decrypted with the matching encryption keys: `decrypt()`
 
 ## Assembly methods
 
-![Assembly methods](./out/relations.uml/assembly/assembly-1.png)
+![Assembly methods](./out/relations.uml/assembly/assembly%20modules.png)
 
 ### creation
 
