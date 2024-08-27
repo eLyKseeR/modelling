@@ -1,6 +1,8 @@
 @startuml
 
 !include ../relations.uml/assembly.puml!0
+!include ../relations.uml/assembly.puml!1
+!include ../relations.uml/assembly.puml!2
 !include ../relations.uml/filesupport.puml
 !include ../relations.uml/snapshot.puml
 
@@ -44,6 +46,8 @@ FileinformationStore o-- fileinformation
 class FSnapshotStore {
     K = timestamp
     V = snapshot
+    create_snapshot()
+    finish_snapshot()
 }
 
 FSnapshotStore o-- "many" snapshot
@@ -55,8 +59,8 @@ class FBlockListStore {
 
 FBlockListStore o-- "many" blockinformation
 
-blockinformation::bsnapshot .left. snapshot
-fileinformation::fsnapshot .right. snapshot
+blockinformation::bsnapshot .left. snapshot::sptimestamp
+fileinformation::fsnapshot .right. snapshot::sptimestamp
 
 remove assemblyinformation
 

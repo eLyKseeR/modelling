@@ -59,6 +59,16 @@ CREATE TABLE snapshot {
 };
 ```
 
+and list all files in the snapshot:
+
+```sql
+CREATE TABLE snapshotfilerel {
+    sptimestamp TIMESTAMP NOT NULL,
+    spfhash CHAR(64) NOT NULL
+};
+```
+
+
 ### FBlockListStore
 
 Stores the blocks of a file.
@@ -100,5 +110,13 @@ CREATE TABLE fileinformation {
     filehash CHAR(64) PRIMARY KEY NOT NULL,
     fsnapshot TIMESTAMP NOT NULL REFERENCES "snapshot" ON DELETE RESTRICT,
     ..
+};
+```
+
+The table 'snapshotfilerel' references 'fileinformation' and 'snapshot':
+```sql
+CREATE TABLE snapshotfilerel {
+    sptimestamp TIMESTAMP NOT NULL REFERENCES "snapshot" ON DELETE RESTRICT,
+    spfhash CHAR(64) NOT NULL REFERENCES "fileinformation" ON DELETE RESTRICT
 };
 ```

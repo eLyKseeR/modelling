@@ -8,7 +8,12 @@ class assemblyinformation {
     aid: PK<aid_t>
     nchunks: int
     apos: int
+    snapshot: int
 }
+' note right of assemblyinformation::snapshot
+' knowning the snapshot here   
+' means we can go from block to assembly to snapshot 
+' end note
 @enduml
 
 @startuml keyinformation
