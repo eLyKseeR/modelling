@@ -1,0 +1,16 @@
+.DS_Store
+*.ods
+.Makefile.coq.d
+
+*.cmi
+*.cmo
+
+*.ml
+*.mli
+
+*.aux
+*.glob
+*.vo
+*.vok
+*.vos
+

@@ -95,3 +95,35 @@ end
 Client -> AssemblyCache : close()
 
 @enduml
+
+@startuml assemblycache components
+!theme sunlust
+
+package "AssemblyCache" {
+    [EnvironmentReadable] -left- Read
+    Write -left- [EnvironmentWritable]
+}
+package "KeyListStore" {
+    AddKey -left- [KeyDb]
+    [KeyDb] -left- GetKey
+}
+package "FBlockListStore" {
+    AddBlock -left- [BlockDb]
+    [BlockDb] -left- GetBlock
+
+}
+package "FileinformationStore" {
+    AddFI - [FileinfoDb]
+    [FileinfoDb] - GetFI
+}
+[BackupFile] -down- Write
+[RestoreFile] -up- Read
+
+[EnvironmentWritable] -up- AddKey
+[EnvironmentWritable] -down- AddBlock
+[EnvironmentWritable] -down- AddFI
+
+[EnvironmentReadable] -up- GetKey
+[EnvironmentReadable] -down- GetBlock
+
+@enduml

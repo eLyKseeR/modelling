@@ -8,6 +8,8 @@ The _AssemblyCache_ has access to [_KeyListStore_](./01-DataStore.md#keyliststor
 
 Internally, the _AssemblyCache_ manages two queues, one for writing blocks and one for reading blocks.
 
+![AssemblyCache components](./out/services.uml/assemblycache/assemblycache%20components.png)
+
 ## Write operation
 
 ![AssemblyCache write operation](./out/services.uml/assemblycache/asssemblycache%20write%20usage.png)
