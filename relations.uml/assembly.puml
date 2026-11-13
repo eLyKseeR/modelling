@@ -1,4 +1,4 @@
-reflects in Coq: theories/Assembly.v
+' reflects in Coq: theories/Assembly.v (elykseer-ml v0.10.3)
 
 @startuml assemblyinformation
 
@@ -6,14 +6,11 @@ reflects in Coq: theories/Assembly.v
 
 class assemblyinformation {
     aid: PK<aid_t>
-    nchunks: int
+    nchunks: Nchunks [16..256]
     apos: int
-    snapshot: int
 }
-' note right of assemblyinformation::snapshot
-' knowning the snapshot here   
-' means we can go from block to assembly to snapshot 
-' end note
+' planned (not in elykseer-ml yet): a 'snapshot' field here
+' would allow to go from block to assembly to snapshot
 @enduml
 
 @startuml keyinformation
@@ -37,8 +34,6 @@ class keyinformation {
 !theme sunlust
 
 class blockinformation {
-    bfhash: Key256
-    bsnapshot: int
     blockid: int
     bchecksum: Key256
     blocksize: int
@@ -61,16 +56,6 @@ interface ASS {
     create(configuration) -> this
     buffer_len() -> int
     calc_checksum() -> Key256
-    ----
-    encrypt()
-    restore()
-    ----
-    decrypt()
-    extract()
-    recall()
-    ----
-    finish()
-    backup()
 }
 
 ASS *-left- assemblyinformation
@@ -80,19 +65,19 @@ ASS <|--- AssemblyPlainFull
 ASS <|--- AssemblyEncrypted
 
 class AssemblyPlainWritable {
-    backup(fpos: int, Buffer) -> AssemblyPlainWritable
+    backup(fpos: int, Buffer) -> AssemblyPlainWritable * blockinformation
     finish() -> AssemblyPlainFull
 }
 
 class AssemblyPlainFull {
-    encrypt(keyinformation) -> AssemblyEncrypted
-    restore(blockinformation) -> Buffer
+    encrypt(keyinformation) -> option AssemblyEncrypted
+    restore(blockinformation) -> option Buffer
 }
 AssemblyPlainFull -down-- blockinformation
 AssemblyPlainFull -down-- keyinformation
 
 class AssemblyEncrypted {
-    decrypt(keyinformation) -> AssemblyPlainFull
+    decrypt(keyinformation) -> option AssemblyPlainFull
     extract(configuration) -> int
     recall(configuration) -> option AssemblyEncrypted
 }

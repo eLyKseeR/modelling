@@ -2,7 +2,8 @@
 
 !theme sunlust
 
-class snapshot {
+' PLANNED: not yet implemented in elykseer-ml (only snapshot_t = positive exists)
+class snapshot <<planned>> {
     sptimestamp: PK<int>
     spendtime: int
     sphost: string

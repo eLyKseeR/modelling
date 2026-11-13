@@ -36,7 +36,8 @@ class EnvironmentWritable {
     initial_environment() configuration -> E
     recreate_assembly() -> E
     finalise_assembly() -> option (aid_t * keyinformation)
-    backup(fp: string, fpos: int, Buffer) -> blockinformation * option (aid_t * keyinformation)
+    finalise_and_recreate_assembly() -> option (E * (aid_t * keyinformation))
+    backup(fp: string, fpos: int, Buffer) -> E * (blockinformation * option (aid_t * keyinformation))
 }
 
 EnvironmentWritable --- keyinformation
@@ -45,7 +46,8 @@ EnvironmentWritable --- blockinformation
 class EnvironmentReadable {
     AB = AssemblyPlainFull
     E = environment<AB>
-    restore_assembly(aid_t, keyinformation) -> E
+    initial_environment() configuration -> E
+    restore_assembly(configuration, aid_t, keyinformation) -> option E
 }
 
 EnvironmentReadable --- keyinformation

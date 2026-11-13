@@ -1,0 +1,127 @@
+' reflects in Coq: theories/Distribution.v (elykseer-ml, f42b221)
+
+@startuml distribution sinks
+
+!theme sunlust
+
+class sink<CONN, CREDS> {
+    name: string
+    creds: CREDS
+    connection: CONN
+    localchunks: string
+    retry: retrypolicy
+}
+
+class retrypolicy {
+    max_attempts: nat
+    base_delay_ms: int
+    max_delay_ms: int
+    deadline_ms: int
+}
+
+enum copy_result {
+    Copied
+    Present
+    Retry(code)
+    Failed(code)
+}
+
+enum direction {
+    PUT
+    GET
+}
+
+interface SINK {
+    K = string
+    CONN: Type
+    CREDS: Type
+    init(configuration, map string string) -> option Sink
+    put(K, Sink) -> Sink * copy_result
+    get(K, Sink) -> Sink * copy_result
+    list_n(int, Sink) -> Sink * list K
+}
+
+class FSSink {
+    CONN = fssink {fsbasepath}
+    CREDS = fscredentials {fsuser}
+}
+
+class S3Sink {
+    CONN = s3sink {protocol, host, port, bucket, prefix}
+    CREDS = s3credentials {user, password}
+}
+
+SINK <|--- FSSink
+SINK <|--- S3Sink
+SINK ..> sink
+sink o-- retrypolicy
+SINK ..> copy_result
+
+@enduml
+
+
+@startuml distribution run
+
+!theme sunlust
+
+Client -> Distribution : run(direction, list (sink_type * list chunk key))
+Distribution -> Distribution : initial_queue(plan)
+group repeat until queue empty (bounded by fuel_for)
+    Distribution -> Distribution : pick() entry that is due first
+    Distribution -> Distribution : sleep_until(e_due)
+    alt deadline_ms exceeded since first attempt
+        Distribution -> Distribution : give_up() -> Failed
+    else
+        Distribution -> Sink : copy_chunk(direction, sink, key): put or get
+        Sink --> Distribution : copy_result
+        alt Copied or Present
+            Distribution -> Distribution : Final
+        else Retry and attempts left and within deadline
+            Distribution -> Distribution : Requeue with due = now + delay(attempt)
+        else Retry exhausted or Failed
+            Distribution -> Distribution : Final (Failed)
+        end
+    end
+end
+Distribution --> Client : list final
+Client -> Distribution : run_ok(direction, keys, finals)
+note right
+    PUT: every planned copy must be ok
+    GET: every chunk ok from at least one sink
+end note
+
+@enduml
+
+
+@startuml distribution plan
+
+!theme sunlust
+
+object "assembly" as a
+object "chunk keys" as ks
+object "weights" as ws
+object "plan" as p
+object "scheduler" as s
+
+a --> ks : enumerate_chunk_keys(config, aid, nchunks)\nkey = ab/cd/<cid>.lxr
+ks --> p : plan(sinks, weights, keys)\n(distribute_by_weight)
+ws --> p : valid_weights()
+p --> s : run_plan(world, plan)
+
+@enduml
+
+
+@startuml distribution retry
+
+!theme sunlust
+
+[*] --> Queued : initial_queue
+Queued --> Attempt : pick() when due
+Attempt --> Done : Copied / Present
+Attempt --> Queued : Retry\n(attempt < max_attempts and\nnow + delay <= first + deadline_ms)
+Attempt --> Failed : Failed / Retry exhausted
+Queued --> Failed : deadline exceeded (give_up)
+Done --> [*]
+Failed --> [*]
+
+@enduml

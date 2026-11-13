@@ -23,7 +23,7 @@ STORE <|--- KeyListStore
 class FileinformationStore
 STORE <|--- FileinformationStore
 
-class FSnapshotStore
+class FSnapshotStore <<planned>>
 STORE <|--- FSnapshotStore
 
 class FBlockListStore
@@ -59,8 +59,7 @@ class FBlockListStore {
 
 FBlockListStore o-- "many" blockinformation
 
-blockinformation::bsnapshot .left. snapshot::sptimestamp
-fileinformation::fsnapshot .right. snapshot::sptimestamp
+' planned: blockinformation and fileinformation get a snapshot reference
 
 remove assemblyinformation
 

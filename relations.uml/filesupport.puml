@@ -4,7 +4,6 @@
 
 class fileinformation {
     filehash: PK<Key256>
-    fsnapshot: int
     fname: string
     fsize: int
     fowner: string

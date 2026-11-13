@@ -1,0 +1,85 @@
+' reflects in Coq: theories/Processor.v (elykseer-ml v0.10.3)
+
+@startuml processor
+
+!theme sunlust
+
+class processor {
+    config: configuration
+    cache: assemblycache
+
+    prepare_processor(configuration)
+    backup_block(writequeueentity)
+    run_write_requests()
+    close()
+    ----
+    file_backup(find_fchecksum, find_fblocks, path)
+    file_restore(basepath, path, list blockinformation) -> int * processor
+    ----
+    read_block(fptr, blockinformation) -> option Buffer
+    list_directory_entries(path) -> files * directories
+}
+
+class assemblycache
+
+processor *-- "1" assemblycache : cache_sz = 3
+
+@enduml
+
+
+@startuml processor file backup
+
+!theme sunlust
+
+Client -> Processor : file_backup(path)
+Processor -> Processor : get_file_information()
+alt file checksum unchanged (dedup level 1)
+    Processor --> Client : unchanged processor
+else file is new or changed
+    Processor -> Processor : prepare_blocks(known blocks, fsize)\n(blocks of block_sz = 32768)
+    group repeat for each block
+        Processor -> Processor : fseek() and read_block()
+        alt block checksum equals known one (dedup level 2)
+            Processor -> AssemblyCache : add_fileblockinformation() (keep old block)
+        else new or changed block
+            Processor -> AssemblyCache : enqueue_write_request()
+            alt queue full
+                Processor -> AssemblyCache : iterate_write_queue()
+                Processor -> AssemblyCache : enqueue_write_request()
+            end
+        end
+    end
+    Processor -> AssemblyCache : add_fileinformation()
+    Processor -> AssemblyCache : iterate_write_queue()
+end
+Client -> Processor : close()
+Processor -> AssemblyCache : close()
+
+@enduml
+
+
+@startuml processor file restore
+
+!theme sunlust
+
+Client -> Processor : file_restore(basepath, path, blocks)
+alt target file exists
+    Processor --> Client : 0 bytes (warning)
+else
+    Processor -> Processor : create parent directories
+    Processor -> Processor : fopen(target, write new)
+    group repeat for each block
+        Processor -> AssemblyCache : enqueue_read_request()
+        alt queue full
+            Processor -> AssemblyCache : iterate_read_queue()
+            Processor -> Processor : fseek(rqfpos) and fwrite(result)
+            Processor -> AssemblyCache : enqueue_read_request()
+        end
+    end
+    Processor -> AssemblyCache : iterate_read_queue()
+    Processor -> Processor : fseek(rqfpos) and fwrite(result)
+    Processor -> Processor : fclose()
+    Processor --> Client : bytes written * processor
+end
+
+@enduml

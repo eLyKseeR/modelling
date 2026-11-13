@@ -1,4 +1,4 @@
-' reflects in Coq: theories/AssemblyCache.v
+' reflects in Coq: theories/AssemblyCache.v (elykseer-ml v0.10.3)
 
 @startuml assemblycache
 
@@ -6,7 +6,7 @@
 
 class assemblycache {
     acenvs: list EnvironmentReadable
-    acsize: int
+    acsize: nat
     acwriteenv: EnvironmentWritable
     acconfig: configuration
     acwriteq: writequeue
@@ -15,14 +15,57 @@ class assemblycache {
     ackstore: KeyListStore
     acfistore: FileinformationStore
 
-    prepare_assemblycache()
-    enqueue_readrequest()
-    enqueue_writerequest()
+    prepare_assemblycache(configuration, size)
+    enqueue_read_request(readqueueentity) -> bool * assemblycache
+    enqueue_write_request(writequeueentity) -> bool * assemblycache
+    iterate_read_queue() -> list readqueueresult * assemblycache
+    iterate_write_queue() -> assemblycache
+    ----
+    add_fileinformation()
+    add_fileblockinformation()
     ----
     flush()
     close()
 
 }
+
+class readqueueentity {
+    rqaid: aid_t
+    rqapos: int
+    rqrlen: int
+    rqfpos: int
+    rqchecksum: string
+}
+
+class writequeueentity {
+    qfhash: string
+    qfpos: int
+    qbuffer: Buffer
+}
+
+class readqueueresult {
+    readrequest: readqueueentity
+    rresult: Buffer
+}
+
+class readqueue {
+    rqueue: list readqueueentity
+}
+
+class writequeue {
+    wqueue: list writequeueentity
+}
+
+note bottom of readqueue
+    both queues are bounded:
+    qsize = 12 entries
+end note
+
+assemblycache::acreadq *-- "1" readqueue
+assemblycache::acwriteq *-- "1" writequeue
+readqueue o-- "0..12" readqueueentity
+writequeue o-- "0..12" writequeueentity
+readqueueresult o-- readqueueentity
 
 @enduml
 
@@ -42,6 +85,11 @@ assemblycache::ackstore .. "1" KeyListStore
 assemblycache::acfistore .. "1" FileinformationStore
 
 remove ENV 
+remove readqueueentity
+remove writequeueentity
+remove readqueueresult
+remove readqueue
+remove writequeue
 remove assemblyinformation
 remove environment 
 remove keyinformation
@@ -49,50 +97,65 @@ remove blockinformation
 
 @enduml
 
-@startuml asssemblycache write usage
+@startuml assemblycache write usage
 
 !theme sunlust
 
 Client -> AssemblyCache : prepare_assemblycache()
 AssemblyCache -> EnvironmentWritable : initial_environment()
 group repeat
-    Client -> AssemblyCache : enqueue_writerequest()
-    group when assembly full
-        AssemblyCache -> EnvironmentWritable : finalise_and_recreate_assembly()
-        AssemblyCache -> KeyListStore : add_key()
+    Client -> AssemblyCache : enqueue_write_request()
+    alt queue has room (qsize = 12)
+        AssemblyCache --> Client : true
+    else queue full
+        AssemblyCache --> Client : false
+        Client -> AssemblyCache : iterate_write_queue()
+        group repeat for each queued block
+            AssemblyCache -> EnvironmentWritable : backup()
+            group when assembly full
+                EnvironmentWritable -> EnvironmentWritable : finalise_and_recreate_assembly()
+                AssemblyCache -> KeyListStore : add()
+            end
+            AssemblyCache -> FBlockListStore : add()
+        end
+        Client -> AssemblyCache : enqueue_write_request()
     end
 end
-Client -> AssemblyCache : flush()
-AssemblyCache -> EnvironmentWritable : finalise_and_recreate_assembly()
-AssemblyCache -> KeyListStore : add_key()
+Client -> AssemblyCache : iterate_write_queue()
+Client -> AssemblyCache : close()
+AssemblyCache -> EnvironmentWritable : finalise_assembly()
+AssemblyCache -> KeyListStore : add()
 
 @enduml
 
-@startuml asssemblycache read usage
+@startuml assemblycache read usage
 
 !theme sunlust
 
 Client -> AssemblyCache : prepare_assemblycache()
-AssemblyCache -> EnvironmentReadable : initial_environment()
 group repeat
-    Client -> AssemblyCache : enqueue_readrequest()
-    group when queue full
+    Client -> AssemblyCache : enqueue_read_request()
+    alt queue has room (qsize = 12)
+        AssemblyCache --> Client : true
+    else queue full
+        AssemblyCache --> Client : false
         Client -> AssemblyCache : iterate_read_queue()
-        group repeat for each assembly
+        group repeat for each request
             AssemblyCache -> AssemblyCache : ensure_assembly()
             alt assembly in cache
-                AssemblyCache -> AssemblyCache
-            else assembly recalled
-                AssemblyCache -> KeyListStore : find_key()
+                AssemblyCache -> AssemblyCache : move to head of acenvs
+            else assembly recalled (oldest dropped when acsize reached)
+                AssemblyCache -> KeyListStore : find()
                 AssemblyCache -> EnvironmentReadable : restore_assembly()
             end
-            group run in parallel for all blocks in assembly
-                AssemblyCache -> EnvironmentReadable : read_block()
-            end
+            AssemblyCache -> AssemblyCache : get content at rqapos, length rqrlen
+            AssemblyCache -> AssemblyCache : verify checksum (if rqchecksum known)
         end
+        AssemblyCache --> Client : list readqueueresult
+        Client -> AssemblyCache : enqueue_read_request()
     end
 end
-Client -> AssemblyCache : close()
+Client -> AssemblyCache : iterate_read_queue()
 
 @enduml
 
@@ -110,7 +173,6 @@ package "KeyListStore" {
 package "FBlockListStore" {
     AddBlock -left- [BlockDb]
     [BlockDb] -left- GetBlock
-
 }
 package "FileinformationStore" {
     AddFI - [FileinfoDb]

@@ -1,5 +1,7 @@
 # Snapshot
 
+> **Planned.** The snapshot is part of the data model but is not (yet) implemented in [elykseer-ml](https://github.com/eLyKseeR) (v0.10.3), where `fileinformation`, `blockinformation` and `assemblyinformation` carry no snapshot reference. The diagrams of the other chapters show the implemented records without it.
+
 Every time a backup is taken, the current time forms its snapshot identifier.
 
 Some additional information can be stored along with it in the table [SnapshotStore](./01-DataStore.md#snapshotstore).
