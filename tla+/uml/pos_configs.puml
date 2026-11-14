@@ -1,0 +1,524 @@
+@startuml overview
+title pos: configurations and results
+note as N
+|= config |= module |= modelled behaviour |= result |
+| PoS | PoS | honest | <color:green>all hold</color> |
+| PoS_big | PoS | honest | <color:green>all hold</color> |
+| PoS_drop_live | PoS | DropChunk | <color:green>all hold</color> |
+| PoS_facade | PoS | Lost chunk, Facade relay | <color:green>all hold</color> |
+| PoS_lost_live | PoS | Lost chunk | <color:green>all hold</color> |
+| PoS_part_ok | PoS | Partition | <color:green>all hold</color> |
+| PoS_part_ok_big | PoS | Partition | <color:green>all hold</color> |
+| PoS_drop | PoS | DropChunk | <color:red>violates RepAboveThreshold</color> |
+| PoS_facade_bad | PoS | Lost chunk, Facade relay | <color:red>violates NoProof</color> |
+| PoS_lost | PoS | Lost chunk | <color:red>violates HonestGetsProof</color> |
+| PoS_part_long | PoS | Partition | <color:red>violates HonestGetsProof</color> |
+| PoS_partial | PoS | Partial holder | <color:red>violates NoProof</color> |
+| PoS_slow | PoS | Slow SP | <color:red>violates HonestGetsProof</color> |
+end note
+@enduml
+
+@startuml PoS
+left to right direction
+skinparam shadowing false
+skinparam roundCorner 12
+title PoS  (PoS.tla) - all checks must hold
+header honest, fast SP: gets the proof
+rectangle "Probe\n(broker, coverage first)" as probe #DDEEFF
+rectangle "Respond\n(SP holds the chunk)" as respond #DDEEFF
+rectangle "Verify\n(HMAC + deadline)" as verify #DDEEFF
+rectangle "Timeout\n(no answer within Budget=1)" as timeout #DDEEFF
+rectangle "Close period\nproof = rep>=Thr & probes & coverage" as close #DDEEFF
+rectangle "Lost chunk\nHeldInit={c1, c2}\n(off)" as lost #F2F2F2;line.dotted;line:grey
+rectangle "Slow SP\nMaxLat=1 > Budget=1\n(off)" as slow #F2F2F2;line.dotted;line:grey
+rectangle "Facade relay\nOther={} RelayLat=2\n(off)" as facade #F2F2F2;line.dotted;line:grey
+rectangle "DropChunk\n(AllowDrop)\n(off)" as drop #F2F2F2;line.dotted;line:grey
+rectangle "Partition\nPartLen=0\n(off)" as cut #F2F2F2;line.dotted;line:grey
+rectangle "Partial holder\nHeldRanges={r1, r2}\n(off)" as part #F2F2F2;line.dotted;line:grey
+probe --> respond
+respond --> verify
+probe --> timeout
+verify --> probe
+timeout --> probe
+verify --> close
+timeout --> close
+lost ..> respond
+slow ..> respond
+facade ..> verify
+drop ..> respond
+cut ..> respond
+part ..> respond
+legend bottom
+|= kind |= name |= TLC result |
+| invariant | TypeOK | <color:green><b>holds</b></color> |
+| invariant | NoFalseProof | <color:green><b>holds</b></color> |
+| invariant | ProofSound | <color:green><b>holds</b></color> |
+| invariant | RepAboveThreshold | <color:green><b>holds</b></color> |
+| invariant | HonestGetsProof | <color:green><b>holds</b></color> |
+| property | Resolved | <color:green><b>holds</b></color> |
+| property | Closes | <color:green><b>holds</b></color> |
+endlegend
+@enduml
+
+@startuml PoS_big
+left to right direction
+skinparam shadowing false
+skinparam roundCorner 12
+title PoS_big  (PoS.tla) - all checks must hold
+header PoS at 3 chunks, 5 nonces: the result does not depend on the tiny size (make big, ~30 s)
+rectangle "Probe\n(broker, coverage first)" as probe #DDEEFF
+rectangle "Respond\n(SP holds the chunk)" as respond #DDEEFF
+rectangle "Verify\n(HMAC + deadline)" as verify #DDEEFF
+rectangle "Timeout\n(no answer within Budget=1)" as timeout #DDEEFF
+rectangle "Close period\nproof = rep>=Thr & probes & coverage" as close #DDEEFF
+rectangle "Lost chunk\nHeldInit={c1, c2, c3}\n(off)" as lost #F2F2F2;line.dotted;line:grey
+rectangle "Slow SP\nMaxLat=1 > Budget=1\n(off)" as slow #F2F2F2;line.dotted;line:grey
+rectangle "Facade relay\nOther={} RelayLat=2\n(off)" as facade #F2F2F2;line.dotted;line:grey
+rectangle "DropChunk\n(AllowDrop)\n(off)" as drop #F2F2F2;line.dotted;line:grey
+rectangle "Partition\nPartLen=0\n(off)" as cut #F2F2F2;line.dotted;line:grey
+rectangle "Partial holder\nHeldRanges={r1, r2}\n(off)" as part #F2F2F2;line.dotted;line:grey
+probe --> respond
+respond --> verify
+probe --> timeout
+verify --> probe
+timeout --> probe
+verify --> close
+timeout --> close
+lost ..> respond
+slow ..> respond
+facade ..> verify
+drop ..> respond
+cut ..> respond
+part ..> respond
+legend bottom
+|= kind |= name |= TLC result |
+| invariant | TypeOK | <color:green><b>holds</b></color> |
+| invariant | NoFalseProof | <color:green><b>holds</b></color> |
+| invariant | ProofSound | <color:green><b>holds</b></color> |
+| invariant | RepAboveThreshold | <color:green><b>holds</b></color> |
+| invariant | HonestGetsProof | <color:green><b>holds</b></color> |
+| property | Resolved | <color:green><b>holds</b></color> |
+| property | Closes | <color:green><b>holds</b></color> |
+endlegend
+@enduml
+
+@startuml PoS_drop_live
+left to right direction
+skinparam shadowing false
+skinparam roundCorner 12
+title PoS_drop_live  (PoS.tla) - all checks must hold
+header SP may drop chunks: proofs stay sound, period closes
+rectangle "Probe\n(broker, coverage first)" as probe #DDEEFF
+rectangle "Respond\n(SP holds the chunk)" as respond #DDEEFF
+rectangle "Verify\n(HMAC + deadline)" as verify #DDEEFF
+rectangle "Timeout\n(no answer within Budget=1)" as timeout #DDEEFF
+rectangle "Close period\nproof = rep>=Thr & probes & coverage" as close #DDEEFF
+rectangle "Lost chunk\nHeldInit={c1, c2}\n(off)" as lost #F2F2F2;line.dotted;line:grey
+rectangle "Slow SP\nMaxLat=1 > Budget=1\n(off)" as slow #F2F2F2;line.dotted;line:grey
+rectangle "Facade relay\nOther={} RelayLat=2\n(off)" as facade #F2F2F2;line.dotted;line:grey
+rectangle "DropChunk\n(AllowDrop)" as drop #FFB3B3
+rectangle "Partition\nPartLen=0\n(off)" as cut #F2F2F2;line.dotted;line:grey
+rectangle "Partial holder\nHeldRanges={r1, r2}\n(off)" as part #F2F2F2;line.dotted;line:grey
+probe --> respond
+respond --> verify
+probe --> timeout
+verify --> probe
+timeout --> probe
+verify --> close
+timeout --> close
+lost ..> respond
+slow ..> respond
+facade ..> verify
+drop --> respond
+cut ..> respond
+part ..> respond
+legend bottom
+|= kind |= name |= TLC result |
+| invariant | TypeOK | <color:green><b>holds</b></color> |
+| invariant | NoFalseProof | <color:green><b>holds</b></color> |
+| invariant | ProofSound | <color:green><b>holds</b></color> |
+| property | Resolved | <color:green><b>holds</b></color> |
+| property | Closes | <color:green><b>holds</b></color> |
+endlegend
+@enduml
+
+@startuml PoS_facade
+left to right direction
+skinparam shadowing false
+skinparam roundCorner 12
+title PoS_facade  (PoS.tla) - all checks must hold
+header facade with RelayLat > Budget: no proof
+rectangle "Probe\n(broker, coverage first)" as probe #DDEEFF
+rectangle "Respond\n(SP holds the chunk)" as respond #DDEEFF
+rectangle "Verify\n(HMAC + deadline)" as verify #DDEEFF
+rectangle "Timeout\n(no answer within Budget=1)" as timeout #DDEEFF
+rectangle "Close period\nproof = rep>=Thr & probes & coverage" as close #DDEEFF
+rectangle "Lost chunk\nHeldInit={c1}" as lost #FFB3B3
+rectangle "Slow SP\nMaxLat=1 > Budget=1\n(off)" as slow #F2F2F2;line.dotted;line:grey
+rectangle "Facade relay\nOther={c2} RelayLat=2" as facade #FFB3B3
+rectangle "DropChunk\n(AllowDrop)\n(off)" as drop #F2F2F2;line.dotted;line:grey
+rectangle "Partition\nPartLen=0\n(off)" as cut #F2F2F2;line.dotted;line:grey
+rectangle "Partial holder\nHeldRanges={r1, r2}\n(off)" as part #F2F2F2;line.dotted;line:grey
+probe --> respond
+respond --> verify
+probe --> timeout
+verify --> probe
+timeout --> probe
+verify --> close
+timeout --> close
+lost --> respond
+slow ..> respond
+facade --> verify
+drop ..> respond
+cut ..> respond
+part ..> respond
+legend bottom
+|= kind |= name |= TLC result |
+| invariant | TypeOK | <color:green><b>holds</b></color> |
+| invariant | NoFalseProof | <color:green><b>holds</b></color> |
+| invariant | ProofSound | <color:green><b>holds</b></color> |
+| invariant | NoProof | <color:green><b>holds</b></color> |
+| property | Resolved | <color:green><b>holds</b></color> |
+| property | Closes | <color:green><b>holds</b></color> |
+endlegend
+@enduml
+
+@startuml PoS_lost_live
+left to right direction
+skinparam shadowing false
+skinparam roundCorner 12
+title PoS_lost_live  (PoS.tla) - all checks must hold
+header SP lost c2: never gets the proof (coverage probes c2)
+rectangle "Probe\n(broker, coverage first)" as probe #DDEEFF
+rectangle "Respond\n(SP holds the chunk)" as respond #DDEEFF
+rectangle "Verify\n(HMAC + deadline)" as verify #DDEEFF
+rectangle "Timeout\n(no answer within Budget=1)" as timeout #DDEEFF
+rectangle "Close period\nproof = rep>=Thr & probes & coverage" as close #DDEEFF
+rectangle "Lost chunk\nHeldInit={c1}" as lost #FFB3B3
+rectangle "Slow SP\nMaxLat=1 > Budget=1\n(off)" as slow #F2F2F2;line.dotted;line:grey
+rectangle "Facade relay\nOther={} RelayLat=2\n(off)" as facade #F2F2F2;line.dotted;line:grey
+rectangle "DropChunk\n(AllowDrop)\n(off)" as drop #F2F2F2;line.dotted;line:grey
+rectangle "Partition\nPartLen=0\n(off)" as cut #F2F2F2;line.dotted;line:grey
+rectangle "Partial holder\nHeldRanges={r1, r2}\n(off)" as part #F2F2F2;line.dotted;line:grey
+probe --> respond
+respond --> verify
+probe --> timeout
+verify --> probe
+timeout --> probe
+verify --> close
+timeout --> close
+lost --> respond
+slow ..> respond
+facade ..> verify
+drop ..> respond
+cut ..> respond
+part ..> respond
+legend bottom
+|= kind |= name |= TLC result |
+| invariant | TypeOK | <color:green><b>holds</b></color> |
+| invariant | NoFalseProof | <color:green><b>holds</b></color> |
+| invariant | ProofSound | <color:green><b>holds</b></color> |
+| invariant | NoProof | <color:green><b>holds</b></color> |
+| property | Resolved | <color:green><b>holds</b></color> |
+| property | Closes | <color:green><b>holds</b></color> |
+endlegend
+@enduml
+
+@startuml PoS_part_ok
+left to right direction
+skinparam shadowing false
+skinparam roundCorner 12
+title PoS_part_ok  (PoS.tla) - all checks must hold
+header partition of 2 ticks: spare probe absorbs it, the honest SP still gets the proof
+rectangle "Probe\n(broker, coverage first)" as probe #DDEEFF
+rectangle "Respond\n(SP holds the chunk)" as respond #DDEEFF
+rectangle "Verify\n(HMAC + deadline)" as verify #DDEEFF
+rectangle "Timeout\n(no answer within Budget=1)" as timeout #DDEEFF
+rectangle "Close period\nproof = rep>=Thr & probes & coverage" as close #DDEEFF
+rectangle "Lost chunk\nHeldInit={c1, c2}\n(off)" as lost #F2F2F2;line.dotted;line:grey
+rectangle "Slow SP\nMaxLat=1 > Budget=1\n(off)" as slow #F2F2F2;line.dotted;line:grey
+rectangle "Facade relay\nOther={} RelayLat=2\n(off)" as facade #F2F2F2;line.dotted;line:grey
+rectangle "DropChunk\n(AllowDrop)\n(off)" as drop #F2F2F2;line.dotted;line:grey
+rectangle "Partition\nPartLen=2" as cut #FFB3B3
+rectangle "Partial holder\nHeldRanges={r1, r2}\n(off)" as part #F2F2F2;line.dotted;line:grey
+probe --> respond
+respond --> verify
+probe --> timeout
+verify --> probe
+timeout --> probe
+verify --> close
+timeout --> close
+lost ..> respond
+slow ..> respond
+facade ..> verify
+drop ..> respond
+cut --> respond
+part ..> respond
+legend bottom
+|= kind |= name |= TLC result |
+| invariant | TypeOK | <color:green><b>holds</b></color> |
+| invariant | NoFalseProof | <color:green><b>holds</b></color> |
+| invariant | ProofSound | <color:green><b>holds</b></color> |
+| invariant | HonestGetsProof | <color:green><b>holds</b></color> |
+| property | Resolved | <color:green><b>holds</b></color> |
+| property | Closes | <color:green><b>holds</b></color> |
+endlegend
+@enduml
+
+@startuml PoS_part_ok_big
+left to right direction
+skinparam shadowing false
+skinparam roundCorner 12
+title PoS_part_ok_big  (PoS.tla) - all checks must hold
+header PoS_part_ok at 3 chunks, 5 nonces: the spare probes still absorb a partition of 2 ticks (make big, ~2.5 min)
+rectangle "Probe\n(broker, coverage first)" as probe #DDEEFF
+rectangle "Respond\n(SP holds the chunk)" as respond #DDEEFF
+rectangle "Verify\n(HMAC + deadline)" as verify #DDEEFF
+rectangle "Timeout\n(no answer within Budget=1)" as timeout #DDEEFF
+rectangle "Close period\nproof = rep>=Thr & probes & coverage" as close #DDEEFF
+rectangle "Lost chunk\nHeldInit={c1, c2, c3}\n(off)" as lost #F2F2F2;line.dotted;line:grey
+rectangle "Slow SP\nMaxLat=1 > Budget=1\n(off)" as slow #F2F2F2;line.dotted;line:grey
+rectangle "Facade relay\nOther={} RelayLat=2\n(off)" as facade #F2F2F2;line.dotted;line:grey
+rectangle "DropChunk\n(AllowDrop)\n(off)" as drop #F2F2F2;line.dotted;line:grey
+rectangle "Partition\nPartLen=2" as cut #FFB3B3
+rectangle "Partial holder\nHeldRanges={r1, r2}\n(off)" as part #F2F2F2;line.dotted;line:grey
+probe --> respond
+respond --> verify
+probe --> timeout
+verify --> probe
+timeout --> probe
+verify --> close
+timeout --> close
+lost ..> respond
+slow ..> respond
+facade ..> verify
+drop ..> respond
+cut --> respond
+part ..> respond
+legend bottom
+|= kind |= name |= TLC result |
+| invariant | TypeOK | <color:green><b>holds</b></color> |
+| invariant | NoFalseProof | <color:green><b>holds</b></color> |
+| invariant | ProofSound | <color:green><b>holds</b></color> |
+| invariant | HonestGetsProof | <color:green><b>holds</b></color> |
+| property | Resolved | <color:green><b>holds</b></color> |
+| property | Closes | <color:green><b>holds</b></color> |
+endlegend
+@enduml
+
+@startuml PoS_drop
+left to right direction
+skinparam shadowing false
+skinparam roundCorner 12
+title PoS_drop  (PoS.tla) - negative test: a violation is expected
+header SP drops a chunk: reputation falls below Thr (violation expected)
+rectangle "Probe\n(broker, coverage first)" as probe #DDEEFF
+rectangle "Respond\n(SP holds the chunk)" as respond #DDEEFF
+rectangle "Verify\n(HMAC + deadline)" as verify #DDEEFF
+rectangle "Timeout\n(no answer within Budget=1)" as timeout #DDEEFF
+rectangle "Close period\nproof = rep>=Thr & probes & coverage" as close #DDEEFF
+rectangle "Lost chunk\nHeldInit={c1, c2}\n(off)" as lost #F2F2F2;line.dotted;line:grey
+rectangle "Slow SP\nMaxLat=1 > Budget=1\n(off)" as slow #F2F2F2;line.dotted;line:grey
+rectangle "Facade relay\nOther={} RelayLat=2\n(off)" as facade #F2F2F2;line.dotted;line:grey
+rectangle "DropChunk\n(AllowDrop)" as drop #FFB3B3
+rectangle "Partition\nPartLen=0\n(off)" as cut #F2F2F2;line.dotted;line:grey
+rectangle "Partial holder\nHeldRanges={r1, r2}\n(off)" as part #F2F2F2;line.dotted;line:grey
+probe --> respond
+respond --> verify
+probe --> timeout
+verify --> probe
+timeout --> probe
+verify --> close
+timeout --> close
+lost ..> respond
+slow ..> respond
+facade ..> verify
+drop --> respond
+cut ..> respond
+part ..> respond
+legend bottom
+|= kind |= name |= TLC result |
+| invariant | RepAboveThreshold | <color:red><b>violated (expected)</b></color> |
+endlegend
+@enduml
+
+@startuml PoS_facade_bad
+left to right direction
+skinparam shadowing false
+skinparam roundCorner 12
+title PoS_facade_bad  (PoS.tla) - negative test: a violation is expected
+header Budget >= RelayLat: facade gets a proof (violation expected)
+rectangle "Probe\n(broker, coverage first)" as probe #DDEEFF
+rectangle "Respond\n(SP holds the chunk)" as respond #DDEEFF
+rectangle "Verify\n(HMAC + deadline)" as verify #DDEEFF
+rectangle "Timeout\n(no answer within Budget=2)" as timeout #DDEEFF
+rectangle "Close period\nproof = rep>=Thr & probes & coverage" as close #DDEEFF
+rectangle "Lost chunk\nHeldInit={c1}" as lost #FFB3B3
+rectangle "Slow SP\nMaxLat=1 > Budget=2\n(off)" as slow #F2F2F2;line.dotted;line:grey
+rectangle "Facade relay\nOther={c2} RelayLat=2" as facade #FFB3B3
+rectangle "DropChunk\n(AllowDrop)\n(off)" as drop #F2F2F2;line.dotted;line:grey
+rectangle "Partition\nPartLen=0\n(off)" as cut #F2F2F2;line.dotted;line:grey
+rectangle "Partial holder\nHeldRanges={r1, r2}\n(off)" as part #F2F2F2;line.dotted;line:grey
+probe --> respond
+respond --> verify
+probe --> timeout
+verify --> probe
+timeout --> probe
+verify --> close
+timeout --> close
+lost --> respond
+slow ..> respond
+facade --> verify
+drop ..> respond
+cut ..> respond
+part ..> respond
+legend bottom
+|= kind |= name |= TLC result |
+| invariant | NoProof | <color:red><b>violated (expected)</b></color> |
+endlegend
+@enduml
+
+@startuml PoS_lost
+left to right direction
+skinparam shadowing false
+skinparam roundCorner 12
+title PoS_lost  (PoS.tla) - negative test: a violation is expected
+header SP lost c2: no proof (violation expected)
+rectangle "Probe\n(broker, coverage first)" as probe #DDEEFF
+rectangle "Respond\n(SP holds the chunk)" as respond #DDEEFF
+rectangle "Verify\n(HMAC + deadline)" as verify #DDEEFF
+rectangle "Timeout\n(no answer within Budget=1)" as timeout #DDEEFF
+rectangle "Close period\nproof = rep>=Thr & probes & coverage" as close #DDEEFF
+rectangle "Lost chunk\nHeldInit={c1}" as lost #FFB3B3
+rectangle "Slow SP\nMaxLat=1 > Budget=1\n(off)" as slow #F2F2F2;line.dotted;line:grey
+rectangle "Facade relay\nOther={} RelayLat=2\n(off)" as facade #F2F2F2;line.dotted;line:grey
+rectangle "DropChunk\n(AllowDrop)\n(off)" as drop #F2F2F2;line.dotted;line:grey
+rectangle "Partition\nPartLen=0\n(off)" as cut #F2F2F2;line.dotted;line:grey
+rectangle "Partial holder\nHeldRanges={r1, r2}\n(off)" as part #F2F2F2;line.dotted;line:grey
+probe --> respond
+respond --> verify
+probe --> timeout
+verify --> probe
+timeout --> probe
+verify --> close
+timeout --> close
+lost --> respond
+slow ..> respond
+facade ..> verify
+drop ..> respond
+cut ..> respond
+part ..> respond
+legend bottom
+|= kind |= name |= TLC result |
+| invariant | HonestGetsProof | <color:red><b>violated (expected)</b></color> |
+| invariant | NoProof | not reached |
+endlegend
+@enduml
+
+@startuml PoS_part_long
+left to right direction
+skinparam shadowing false
+skinparam roundCorner 12
+title PoS_part_long  (PoS.tla) - negative test: a violation is expected
+header partition of 4 ticks exceeds the SLA: the honest SP gets no proof (violation expected)
+rectangle "Probe\n(broker, coverage first)" as probe #DDEEFF
+rectangle "Respond\n(SP holds the chunk)" as respond #DDEEFF
+rectangle "Verify\n(HMAC + deadline)" as verify #DDEEFF
+rectangle "Timeout\n(no answer within Budget=1)" as timeout #DDEEFF
+rectangle "Close period\nproof = rep>=Thr & probes & coverage" as close #DDEEFF
+rectangle "Lost chunk\nHeldInit={c1, c2}\n(off)" as lost #F2F2F2;line.dotted;line:grey
+rectangle "Slow SP\nMaxLat=1 > Budget=1\n(off)" as slow #F2F2F2;line.dotted;line:grey
+rectangle "Facade relay\nOther={} RelayLat=2\n(off)" as facade #F2F2F2;line.dotted;line:grey
+rectangle "DropChunk\n(AllowDrop)\n(off)" as drop #F2F2F2;line.dotted;line:grey
+rectangle "Partition\nPartLen=4" as cut #FFB3B3
+rectangle "Partial holder\nHeldRanges={r1, r2}\n(off)" as part #F2F2F2;line.dotted;line:grey
+probe --> respond
+respond --> verify
+probe --> timeout
+verify --> probe
+timeout --> probe
+verify --> close
+timeout --> close
+lost ..> respond
+slow ..> respond
+facade ..> verify
+drop ..> respond
+cut --> respond
+part ..> respond
+legend bottom
+|= kind |= name |= TLC result |
+| invariant | HonestGetsProof | <color:red><b>violated (expected)</b></color> |
+endlegend
+@enduml
+
+@startuml PoS_partial
+left to right direction
+skinparam shadowing false
+skinparam roundCorner 12
+title PoS_partial  (PoS.tla) - negative test: a violation is expected
+header SP keeps half of every chunk: probes hitting the kept half give it the proof (violation expected)
+rectangle "Probe\n(broker, coverage first)" as probe #DDEEFF
+rectangle "Respond\n(SP holds the chunk)" as respond #DDEEFF
+rectangle "Verify\n(HMAC + deadline)" as verify #DDEEFF
+rectangle "Timeout\n(no answer within Budget=1)" as timeout #DDEEFF
+rectangle "Close period\nproof = rep>=Thr & probes & coverage" as close #DDEEFF
+rectangle "Lost chunk\nHeldInit={c1, c2}\n(off)" as lost #F2F2F2;line.dotted;line:grey
+rectangle "Slow SP\nMaxLat=1 > Budget=1\n(off)" as slow #F2F2F2;line.dotted;line:grey
+rectangle "Facade relay\nOther={} RelayLat=2\n(off)" as facade #F2F2F2;line.dotted;line:grey
+rectangle "DropChunk\n(AllowDrop)\n(off)" as drop #F2F2F2;line.dotted;line:grey
+rectangle "Partition\nPartLen=0\n(off)" as cut #F2F2F2;line.dotted;line:grey
+rectangle "Partial holder\nHeldRanges={r1}" as part #FFB3B3
+probe --> respond
+respond --> verify
+probe --> timeout
+verify --> probe
+timeout --> probe
+verify --> close
+timeout --> close
+lost ..> respond
+slow ..> respond
+facade ..> verify
+drop ..> respond
+cut ..> respond
+part --> respond
+legend bottom
+|= kind |= name |= TLC result |
+| invariant | NoProof | <color:red><b>violated (expected)</b></color> |
+endlegend
+@enduml
+
+@startuml PoS_slow
+left to right direction
+skinparam shadowing false
+skinparam roundCorner 12
+title PoS_slow  (PoS.tla) - negative test: a violation is expected
+header SP slower than Budget: no proof (violation expected)
+rectangle "Probe\n(broker, coverage first)" as probe #DDEEFF
+rectangle "Respond\n(SP holds the chunk)" as respond #DDEEFF
+rectangle "Verify\n(HMAC + deadline)" as verify #DDEEFF
+rectangle "Timeout\n(no answer within Budget=1)" as timeout #DDEEFF
+rectangle "Close period\nproof = rep>=Thr & probes & coverage" as close #DDEEFF
+rectangle "Lost chunk\nHeldInit={c1, c2}\n(off)" as lost #F2F2F2;line.dotted;line:grey
+rectangle "Slow SP\nMaxLat=3 > Budget=1" as slow #FFB3B3
+rectangle "Facade relay\nOther={} RelayLat=2\n(off)" as facade #F2F2F2;line.dotted;line:grey
+rectangle "DropChunk\n(AllowDrop)\n(off)" as drop #F2F2F2;line.dotted;line:grey
+rectangle "Partition\nPartLen=0\n(off)" as cut #F2F2F2;line.dotted;line:grey
+rectangle "Partial holder\nHeldRanges={r1, r2}\n(off)" as part #F2F2F2;line.dotted;line:grey
+probe --> respond
+respond --> verify
+probe --> timeout
+verify --> probe
+timeout --> probe
+verify --> close
+timeout --> close
+lost ..> respond
+slow --> respond
+facade ..> verify
+drop ..> respond
+cut ..> respond
+part ..> respond
+legend bottom
+|= kind |= name |= TLC result |
+| invariant | HonestGetsProof | <color:red><b>violated (expected)</b></color> |
+endlegend
+@enduml

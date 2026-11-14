@@ -1,0 +1,1727 @@
+@startuml overview
+title econ: configurations and results
+note as N
+|= config |= module |= modelled behaviour |= result |
+| Econ | Econ | ParkRefund | <color:green>all hold</color> |
+| Econ_burn | Econ | Refund lost | <color:red>violates NoBurn</color> |
+| Econ_collude | Econ | Broker pays SP, ParkRefund | <color:red>violates PaidOnlyWithProof</color> |
+| EconPoS | EconPoS | honest | <color:green>all hold</color> |
+| EconPoS_facade | EconPoS | Lost chunk, Facade relay | <color:green>all hold</color> |
+| EconPoS_lost | EconPoS | Lost chunk | <color:green>all hold</color> |
+| EconPoS_part_ok | EconPoS | Partition | <color:green>all hold</color> |
+| EconPoS_drop | EconPoS | DropChunk | <color:red>violates PaidImpliesHeld</color> |
+| EconPoS_drop_gain | EconPoS | DropChunk | <color:red>violates NoGain</color> |
+| EconPoS_facade_bad | EconPoS | Lost chunk, Facade relay | <color:red>violates NeverPaid</color> |
+| EconPoS_facade_gain | EconPoS | Lost chunk, Facade relay | <color:red>violates NoGain</color> |
+| EconPoS_nostake | EconPoS | Lost chunk | <color:red>violates WriterWhole</color> |
+| EconPoS_part_long | EconPoS | Partition | <color:red>violates NeverRefunded</color> |
+| EconPoS_slow | EconPoS | Slow SP | <color:red>violates NeverRefunded</color> |
+| Restore_nack_honest | Restore | Corrupt SP, Policy: perchunk, Probe on nack, Timeout penalty | <color:green>all hold</color> |
+| Restore_nack_lie | Restore | Reader lies, Policy: perchunk, Probe on nack, Timeout penalty | <color:green>all hold</color> |
+| Restore_nack_signed | Restore | Corrupt SP, Policy: perchunk, Probe on nack, Signed deliveries, Timeout penalty | <color:green>all hold</color> |
+| Restore_perchunk_honest | Restore | Policy: perchunk, Probe on nack, Timeout penalty | <color:green>all hold</color> |
+| Restore_perchunk_idle | Restore | Reader idle, Policy: perchunk, Probe on nack, Timeout penalty | <color:green>all hold</color> |
+| Restore_perchunk_reader | Restore | Reader withholds acks, Policy: perchunk, Probe on nack, Timeout penalty | <color:green>all hold</color> |
+| Restore_perchunk_sp | Restore | Faulty SP, Policy: perchunk, Probe on nack, Timeout penalty | <color:green>all hold</color> |
+| Restore_tier | Restore | Reader withholds acks, Policy: perchunk, Probe on nack, Timeout penalty | <color:green>all hold</color> |
+| Restore_after_reader | Restore | Reader withholds acks, Probe on nack, Timeout penalty | <color:red>violates SpLossBounded</color> |
+| Restore_fee_refund | Restore | Reader withholds acks, Fee refunded, Policy: perchunk, Probe on nack, Timeout penalty | <color:red>violates FeeKept</color> |
+| Restore_nack_noprobe | Restore | Reader lies, Policy: perchunk, Timeout penalty | <color:red>violates NackJudged</color> |
+| Restore_nack_selective | Restore | Corrupt SP, Policy: perchunk, Probe on nack, Timeout penalty | <color:red>violates NackJudged</color> |
+| Restore_nopenalty | Restore | Reader withholds acks, Policy: perchunk, Probe on nack | <color:red>violates ReaderPenalised</color> |
+| Restore_tier_soft | Restore | Reader withholds acks, Policy: perchunk, Probe on nack, Timeout penalty | <color:red>violates TierRaised</color> |
+| Restore_upfront_sp | Restore | Faulty SP, Probe on nack, Timeout penalty | <color:red>violates ReaderLossBounded</color> |
+| Replicas_hysteresis | Replicas | Fail / Recover, Prune surplus copy, only while live copies < R=2 | <color:green>all hold</color> |
+| Replicas_naive | Replicas | Fail / Recover, Copies pile up | <color:red>violates BoundedCopies</color> |
+| Replicas_naive_blip | Replicas | Fail / Recover, Copies pile up | <color:red>violates NoReplicaWithoutRealFailure</color> |
+| Sybil_attested | Sybil | Sybil operator, Attested | <color:green>all hold</color> |
+| Sybil_bound | Sybil | Sybil operator, ReplicaBound proofs | <color:green>all hold</color> |
+| Sybil_capacity | Sybil | Sybil operator, Attested | <color:green>all hold</color> |
+| Sybil_honest | Sybil | honest | <color:green>all hold</color> |
+| Sybil_dedup | Sybil | Sybil operator | <color:red>violates CopiesPaidFor</color> |
+| Sybil_placeable | Sybil | Sybil operator, Attested | <color:red>violates NeverAllPlaced</color> |
+| Sybil_share | Sybil | Sybil operator, ReplicaBound proofs | <color:red>violates OperatorShareOK</color> |
+| Sybil_unattested | Sybil | Sybil operator, ReplicaBound proofs | <color:red>violates Independent</color> |
+end note
+@enduml
+
+@startuml Econ
+left to right direction
+skinparam shadowing false
+skinparam roundCorner 12
+title Econ  (Econ.tla) - all checks must hold
+header honest broker; the writer may cancel the account meanwhile: refunds are parked, never lost
+rectangle "Pay\nwriter -> escrow" as pay #DDEEFF
+rectangle "Prove\nverdict pass|fail" as prove #DDEEFF
+rectangle "Settle\nfee to broker" as settle #DDEEFF
+rectangle "paid: SP gets price-fee" as paid #DDEEFF
+rectangle "refunded: writer gets price-fee" as refund #DDEEFF
+rectangle "Broker pays SP\ndespite failed proof\n(off)" as collude #F2F2F2;line.dotted;line:grey
+rectangle "Cancel account\n(writer withdraws)" as cancel #DDEEFF
+rectangle "ParkRefund\nunclaimed -> Claim" as park #BBEEBB
+rectangle "Refund lost\n(naive)\n(off)" as burn #F2F2F2;line.dotted;line:grey
+pay --> prove
+prove --> settle
+settle --> paid
+settle --> refund
+collude ..> settle
+cancel --> refund
+refund --> park
+refund ..> burn
+legend bottom
+|= kind |= name |= TLC result |
+| invariant | TypeOK | <color:green><b>holds</b></color> |
+| invariant | NoBurn | <color:green><b>holds</b></color> |
+| invariant | Conservation | <color:green><b>holds</b></color> |
+| invariant | EscrowExact | <color:green><b>holds</b></color> |
+| invariant | BrokerIncome | <color:green><b>holds</b></color> |
+| invariant | PaidOnlyWithProof | <color:green><b>holds</b></color> |
+| invariant | SpIncome | <color:green><b>holds</b></color> |
+| invariant | RefundOnFail | <color:green><b>holds</b></color> |
+| property | Settled | <color:green><b>holds</b></color> |
+| property | Claimed | <color:green><b>holds</b></color> |
+endlegend
+@enduml
+
+@startuml Econ_burn
+left to right direction
+skinparam shadowing false
+skinparam roundCorner 12
+title Econ_burn  (Econ.tla) - negative test: a violation is expected
+header naive: a refund for a cancelled account is lost (violation expected)
+rectangle "Pay\nwriter -> escrow" as pay #DDEEFF
+rectangle "Prove\nverdict pass|fail" as prove #DDEEFF
+rectangle "Settle\nfee to broker" as settle #DDEEFF
+rectangle "paid: SP gets price-fee" as paid #DDEEFF
+rectangle "refunded: writer gets price-fee" as refund #DDEEFF
+rectangle "Broker pays SP\ndespite failed proof\n(off)" as collude #F2F2F2;line.dotted;line:grey
+rectangle "Cancel account\n(writer withdraws)" as cancel #DDEEFF
+rectangle "ParkRefund\nunclaimed -> Claim\n(off)" as park #F2F2F2;line.dotted;line:grey
+rectangle "Refund lost\n(naive)" as burn #FFB3B3
+pay --> prove
+prove --> settle
+settle --> paid
+settle --> refund
+collude ..> settle
+cancel --> refund
+refund ..> park
+refund --> burn
+legend bottom
+|= kind |= name |= TLC result |
+| invariant | NoBurn | <color:red><b>violated (expected)</b></color> |
+endlegend
+@enduml
+
+@startuml Econ_collude
+left to right direction
+skinparam shadowing false
+skinparam roundCorner 12
+title Econ_collude  (Econ.tla) - negative test: a violation is expected
+header broker pays the sp despite a failed proof (violation expected)
+rectangle "Pay\nwriter -> escrow" as pay #DDEEFF
+rectangle "Prove\nverdict pass|fail" as prove #DDEEFF
+rectangle "Settle\nfee to broker" as settle #DDEEFF
+rectangle "paid: SP gets price-fee" as paid #DDEEFF
+rectangle "refunded: writer gets price-fee" as refund #DDEEFF
+rectangle "Broker pays SP\ndespite failed proof" as collude #FFB3B3
+rectangle "Cancel account\n(writer withdraws)" as cancel #DDEEFF
+rectangle "ParkRefund\nunclaimed -> Claim" as park #BBEEBB
+rectangle "Refund lost\n(naive)\n(off)" as burn #F2F2F2;line.dotted;line:grey
+pay --> prove
+prove --> settle
+settle --> paid
+settle --> refund
+collude --> settle
+cancel --> refund
+refund --> park
+refund ..> burn
+legend bottom
+|= kind |= name |= TLC result |
+| invariant | PaidOnlyWithProof | <color:red><b>violated (expected)</b></color> |
+endlegend
+@enduml
+
+@startuml EconPoS
+left to right direction
+skinparam shadowing false
+skinparam roundCorner 12
+title EconPoS  (EconPoS.tla) - all checks must hold
+header honest SP: the SP is paid
+rectangle "Probe\n(broker, coverage first)" as probe #DDEEFF
+rectangle "Respond\n(SP holds the chunk)" as respond #DDEEFF
+rectangle "Verify\n(HMAC + deadline)" as verify #DDEEFF
+rectangle "Timeout\n(no answer within Budget=1)" as timeout #DDEEFF
+rectangle "Lost chunk\nHeldInit={c1, c2}\n(off)" as lost #F2F2F2;line.dotted;line:grey
+rectangle "Slow SP\nMaxLat=1 > Budget=1\n(off)" as slow #F2F2F2;line.dotted;line:grey
+rectangle "Facade relay\nOther={} RelayLat=2\n(off)" as facade #F2F2F2;line.dotted;line:grey
+rectangle "DropChunk\n(AllowDrop)\n(off)" as drop #F2F2F2;line.dotted;line:grey
+rectangle "Partition\nPartLen=0\n(off)" as cut #F2F2F2;line.dotted;line:grey
+rectangle "Partial holder\nHeldRanges={r1, r2}\n(off)" as part #F2F2F2;line.dotted;line:grey
+rectangle "Pay\nprice + SP stake=20 -> escrow" as pay #DDEEFF
+rectangle "PoS period (pos/PoS.tla)\nprobes until closed" as pos #DDEEFF
+rectangle "Prove\nverdict = PoS proof" as prove #DDEEFF
+rectangle "Settle" as settle #DDEEFF
+rectangle "pass: SP gets price-fee + stake" as paid #DDEEFF
+rectangle "fail: writer gets price-fee + stake" as refund #DDEEFF
+probe --> respond
+respond --> verify
+probe --> timeout
+verify --> probe
+timeout --> probe
+lost ..> respond
+slow ..> respond
+facade ..> verify
+drop ..> respond
+cut ..> respond
+part ..> respond
+pay --> probe
+verify --> pos
+timeout --> pos
+pos --> prove
+prove --> settle
+settle --> paid
+settle --> refund
+legend bottom
+|= kind |= name |= TLC result |
+| invariant | TypeOK | <color:green><b>holds</b></color> |
+| invariant | Conservation | <color:green><b>holds</b></color> |
+| invariant | EscrowExact | <color:green><b>holds</b></color> |
+| invariant | BrokerIncome | <color:green><b>holds</b></color> |
+| invariant | PaidOnlyWithProof | <color:green><b>holds</b></color> |
+| invariant | RefundOnlyWithoutProof | <color:green><b>holds</b></color> |
+| invariant | NeverRefunded | <color:green><b>holds</b></color> |
+| invariant | NoGain | <color:green><b>holds</b></color> |
+| property | Settled | <color:green><b>holds</b></color> |
+endlegend
+@enduml
+
+@startuml EconPoS_facade
+left to right direction
+skinparam shadowing false
+skinparam roundCorner 12
+title EconPoS_facade  (EconPoS.tla) - all checks must hold
+header facade slower than the deadline: not paid
+rectangle "Probe\n(broker, coverage first)" as probe #DDEEFF
+rectangle "Respond\n(SP holds the chunk)" as respond #DDEEFF
+rectangle "Verify\n(HMAC + deadline)" as verify #DDEEFF
+rectangle "Timeout\n(no answer within Budget=1)" as timeout #DDEEFF
+rectangle "Lost chunk\nHeldInit={c1}" as lost #FFB3B3
+rectangle "Slow SP\nMaxLat=1 > Budget=1\n(off)" as slow #F2F2F2;line.dotted;line:grey
+rectangle "Facade relay\nOther={c2} RelayLat=2" as facade #FFB3B3
+rectangle "DropChunk\n(AllowDrop)\n(off)" as drop #F2F2F2;line.dotted;line:grey
+rectangle "Partition\nPartLen=0\n(off)" as cut #F2F2F2;line.dotted;line:grey
+rectangle "Partial holder\nHeldRanges={r1, r2}\n(off)" as part #F2F2F2;line.dotted;line:grey
+rectangle "Pay\nprice + SP stake=20 -> escrow" as pay #DDEEFF
+rectangle "PoS period (pos/PoS.tla)\nprobes until closed" as pos #DDEEFF
+rectangle "Prove\nverdict = PoS proof" as prove #DDEEFF
+rectangle "Settle" as settle #DDEEFF
+rectangle "pass: SP gets price-fee + stake" as paid #DDEEFF
+rectangle "fail: writer gets price-fee + stake" as refund #DDEEFF
+probe --> respond
+respond --> verify
+probe --> timeout
+verify --> probe
+timeout --> probe
+lost --> respond
+slow ..> respond
+facade --> verify
+drop ..> respond
+cut ..> respond
+part ..> respond
+pay --> probe
+verify --> pos
+timeout --> pos
+pos --> prove
+prove --> settle
+settle --> paid
+settle --> refund
+legend bottom
+|= kind |= name |= TLC result |
+| invariant | TypeOK | <color:green><b>holds</b></color> |
+| invariant | Conservation | <color:green><b>holds</b></color> |
+| invariant | EscrowExact | <color:green><b>holds</b></color> |
+| invariant | BrokerIncome | <color:green><b>holds</b></color> |
+| invariant | PaidOnlyWithProof | <color:green><b>holds</b></color> |
+| invariant | RefundOnlyWithoutProof | <color:green><b>holds</b></color> |
+| invariant | NeverPaid | <color:green><b>holds</b></color> |
+| invariant | NoGain | <color:green><b>holds</b></color> |
+| invariant | WriterWhole | <color:green><b>holds</b></color> |
+| property | Settled | <color:green><b>holds</b></color> |
+endlegend
+@enduml
+
+@startuml EconPoS_lost
+left to right direction
+skinparam shadowing false
+skinparam roundCorner 12
+title EconPoS_lost  (EconPoS.tla) - all checks must hold
+header SP lost c2: refund to the writer, never paid
+rectangle "Probe\n(broker, coverage first)" as probe #DDEEFF
+rectangle "Respond\n(SP holds the chunk)" as respond #DDEEFF
+rectangle "Verify\n(HMAC + deadline)" as verify #DDEEFF
+rectangle "Timeout\n(no answer within Budget=1)" as timeout #DDEEFF
+rectangle "Lost chunk\nHeldInit={c1}" as lost #FFB3B3
+rectangle "Slow SP\nMaxLat=1 > Budget=1\n(off)" as slow #F2F2F2;line.dotted;line:grey
+rectangle "Facade relay\nOther={} RelayLat=2\n(off)" as facade #F2F2F2;line.dotted;line:grey
+rectangle "DropChunk\n(AllowDrop)\n(off)" as drop #F2F2F2;line.dotted;line:grey
+rectangle "Partition\nPartLen=0\n(off)" as cut #F2F2F2;line.dotted;line:grey
+rectangle "Partial holder\nHeldRanges={r1, r2}\n(off)" as part #F2F2F2;line.dotted;line:grey
+rectangle "Pay\nprice + SP stake=20 -> escrow" as pay #DDEEFF
+rectangle "PoS period (pos/PoS.tla)\nprobes until closed" as pos #DDEEFF
+rectangle "Prove\nverdict = PoS proof" as prove #DDEEFF
+rectangle "Settle" as settle #DDEEFF
+rectangle "pass: SP gets price-fee + stake" as paid #DDEEFF
+rectangle "fail: writer gets price-fee + stake" as refund #DDEEFF
+probe --> respond
+respond --> verify
+probe --> timeout
+verify --> probe
+timeout --> probe
+lost --> respond
+slow ..> respond
+facade ..> verify
+drop ..> respond
+cut ..> respond
+part ..> respond
+pay --> probe
+verify --> pos
+timeout --> pos
+pos --> prove
+prove --> settle
+settle --> paid
+settle --> refund
+legend bottom
+|= kind |= name |= TLC result |
+| invariant | TypeOK | <color:green><b>holds</b></color> |
+| invariant | Conservation | <color:green><b>holds</b></color> |
+| invariant | EscrowExact | <color:green><b>holds</b></color> |
+| invariant | BrokerIncome | <color:green><b>holds</b></color> |
+| invariant | PaidOnlyWithProof | <color:green><b>holds</b></color> |
+| invariant | RefundOnlyWithoutProof | <color:green><b>holds</b></color> |
+| invariant | NeverPaid | <color:green><b>holds</b></color> |
+| invariant | NoGain | <color:green><b>holds</b></color> |
+| invariant | WriterWhole | <color:green><b>holds</b></color> |
+| property | Settled | <color:green><b>holds</b></color> |
+endlegend
+@enduml
+
+@startuml EconPoS_part_ok
+left to right direction
+skinparam shadowing false
+skinparam roundCorner 12
+title EconPoS_part_ok  (EconPoS.tla) - all checks must hold
+header partition of 2 ticks within the SLA: the SP is still paid
+rectangle "Probe\n(broker, coverage first)" as probe #DDEEFF
+rectangle "Respond\n(SP holds the chunk)" as respond #DDEEFF
+rectangle "Verify\n(HMAC + deadline)" as verify #DDEEFF
+rectangle "Timeout\n(no answer within Budget=1)" as timeout #DDEEFF
+rectangle "Lost chunk\nHeldInit={c1, c2}\n(off)" as lost #F2F2F2;line.dotted;line:grey
+rectangle "Slow SP\nMaxLat=1 > Budget=1\n(off)" as slow #F2F2F2;line.dotted;line:grey
+rectangle "Facade relay\nOther={} RelayLat=2\n(off)" as facade #F2F2F2;line.dotted;line:grey
+rectangle "DropChunk\n(AllowDrop)\n(off)" as drop #F2F2F2;line.dotted;line:grey
+rectangle "Partition\nPartLen=2" as cut #FFB3B3
+rectangle "Partial holder\nHeldRanges={r1, r2}\n(off)" as part #F2F2F2;line.dotted;line:grey
+rectangle "Pay\nprice + SP stake=20 -> escrow" as pay #DDEEFF
+rectangle "PoS period (pos/PoS.tla)\nprobes until closed" as pos #DDEEFF
+rectangle "Prove\nverdict = PoS proof" as prove #DDEEFF
+rectangle "Settle" as settle #DDEEFF
+rectangle "pass: SP gets price-fee + stake" as paid #DDEEFF
+rectangle "fail: writer gets price-fee + stake" as refund #DDEEFF
+probe --> respond
+respond --> verify
+probe --> timeout
+verify --> probe
+timeout --> probe
+lost ..> respond
+slow ..> respond
+facade ..> verify
+drop ..> respond
+cut --> respond
+part ..> respond
+pay --> probe
+verify --> pos
+timeout --> pos
+pos --> prove
+prove --> settle
+settle --> paid
+settle --> refund
+legend bottom
+|= kind |= name |= TLC result |
+| invariant | TypeOK | <color:green><b>holds</b></color> |
+| invariant | Conservation | <color:green><b>holds</b></color> |
+| invariant | EscrowExact | <color:green><b>holds</b></color> |
+| invariant | PaidOnlyWithProof | <color:green><b>holds</b></color> |
+| invariant | RefundOnlyWithoutProof | <color:green><b>holds</b></color> |
+| invariant | NeverRefunded | <color:green><b>holds</b></color> |
+| invariant | NoGain | <color:green><b>holds</b></color> |
+endlegend
+@enduml
+
+@startuml EconPoS_drop
+left to right direction
+skinparam shadowing false
+skinparam roundCorner 12
+title EconPoS_drop  (EconPoS.tla) - negative test: a violation is expected
+header SP drops a chunk after the last probe and is still paid (violation expected)
+rectangle "Probe\n(broker, coverage first)" as probe #DDEEFF
+rectangle "Respond\n(SP holds the chunk)" as respond #DDEEFF
+rectangle "Verify\n(HMAC + deadline)" as verify #DDEEFF
+rectangle "Timeout\n(no answer within Budget=1)" as timeout #DDEEFF
+rectangle "Lost chunk\nHeldInit={c1, c2}\n(off)" as lost #F2F2F2;line.dotted;line:grey
+rectangle "Slow SP\nMaxLat=1 > Budget=1\n(off)" as slow #F2F2F2;line.dotted;line:grey
+rectangle "Facade relay\nOther={} RelayLat=2\n(off)" as facade #F2F2F2;line.dotted;line:grey
+rectangle "DropChunk\n(AllowDrop)" as drop #FFB3B3
+rectangle "Partition\nPartLen=0\n(off)" as cut #F2F2F2;line.dotted;line:grey
+rectangle "Partial holder\nHeldRanges={r1, r2}\n(off)" as part #F2F2F2;line.dotted;line:grey
+rectangle "Pay\nprice + SP stake=20 -> escrow" as pay #DDEEFF
+rectangle "PoS period (pos/PoS.tla)\nprobes until closed" as pos #DDEEFF
+rectangle "Prove\nverdict = PoS proof" as prove #DDEEFF
+rectangle "Settle" as settle #DDEEFF
+rectangle "pass: SP gets price-fee + stake" as paid #DDEEFF
+rectangle "fail: writer gets price-fee + stake" as refund #DDEEFF
+probe --> respond
+respond --> verify
+probe --> timeout
+verify --> probe
+timeout --> probe
+lost ..> respond
+slow ..> respond
+facade ..> verify
+drop --> respond
+cut ..> respond
+part ..> respond
+pay --> probe
+verify --> pos
+timeout --> pos
+pos --> prove
+prove --> settle
+settle --> paid
+settle --> refund
+legend bottom
+|= kind |= name |= TLC result |
+| invariant | PaidImpliesHeld | <color:red><b>violated (expected)</b></color> |
+endlegend
+@enduml
+
+@startuml EconPoS_drop_gain
+left to right direction
+skinparam shadowing false
+skinparam roundCorner 12
+title EconPoS_drop_gain  (EconPoS.tla) - negative test: a violation is expected
+header SP drops a chunk after the last probe: profit above honest (violation expected)
+rectangle "Probe\n(broker, coverage first)" as probe #DDEEFF
+rectangle "Respond\n(SP holds the chunk)" as respond #DDEEFF
+rectangle "Verify\n(HMAC + deadline)" as verify #DDEEFF
+rectangle "Timeout\n(no answer within Budget=1)" as timeout #DDEEFF
+rectangle "Lost chunk\nHeldInit={c1, c2}\n(off)" as lost #F2F2F2;line.dotted;line:grey
+rectangle "Slow SP\nMaxLat=1 > Budget=1\n(off)" as slow #F2F2F2;line.dotted;line:grey
+rectangle "Facade relay\nOther={} RelayLat=2\n(off)" as facade #F2F2F2;line.dotted;line:grey
+rectangle "DropChunk\n(AllowDrop)" as drop #FFB3B3
+rectangle "Partition\nPartLen=0\n(off)" as cut #F2F2F2;line.dotted;line:grey
+rectangle "Partial holder\nHeldRanges={r1, r2}\n(off)" as part #F2F2F2;line.dotted;line:grey
+rectangle "Pay\nprice + SP stake=20 -> escrow" as pay #DDEEFF
+rectangle "PoS period (pos/PoS.tla)\nprobes until closed" as pos #DDEEFF
+rectangle "Prove\nverdict = PoS proof" as prove #DDEEFF
+rectangle "Settle" as settle #DDEEFF
+rectangle "pass: SP gets price-fee + stake" as paid #DDEEFF
+rectangle "fail: writer gets price-fee + stake" as refund #DDEEFF
+probe --> respond
+respond --> verify
+probe --> timeout
+verify --> probe
+timeout --> probe
+lost ..> respond
+slow ..> respond
+facade ..> verify
+drop --> respond
+cut ..> respond
+part ..> respond
+pay --> probe
+verify --> pos
+timeout --> pos
+pos --> prove
+prove --> settle
+settle --> paid
+settle --> refund
+legend bottom
+|= kind |= name |= TLC result |
+| invariant | NoGain | <color:red><b>violated (expected)</b></color> |
+endlegend
+@enduml
+
+@startuml EconPoS_facade_bad
+left to right direction
+skinparam shadowing false
+skinparam roundCorner 12
+title EconPoS_facade_bad  (EconPoS.tla) - negative test: a violation is expected
+header deadline >= relay: the facade SP is paid (violation expected)
+rectangle "Probe\n(broker, coverage first)" as probe #DDEEFF
+rectangle "Respond\n(SP holds the chunk)" as respond #DDEEFF
+rectangle "Verify\n(HMAC + deadline)" as verify #DDEEFF
+rectangle "Timeout\n(no answer within Budget=2)" as timeout #DDEEFF
+rectangle "Lost chunk\nHeldInit={c1}" as lost #FFB3B3
+rectangle "Slow SP\nMaxLat=1 > Budget=2\n(off)" as slow #F2F2F2;line.dotted;line:grey
+rectangle "Facade relay\nOther={c2} RelayLat=2" as facade #FFB3B3
+rectangle "DropChunk\n(AllowDrop)\n(off)" as drop #F2F2F2;line.dotted;line:grey
+rectangle "Partition\nPartLen=0\n(off)" as cut #F2F2F2;line.dotted;line:grey
+rectangle "Partial holder\nHeldRanges={r1, r2}\n(off)" as part #F2F2F2;line.dotted;line:grey
+rectangle "Pay\nprice + SP stake=20 -> escrow" as pay #DDEEFF
+rectangle "PoS period (pos/PoS.tla)\nprobes until closed" as pos #DDEEFF
+rectangle "Prove\nverdict = PoS proof" as prove #DDEEFF
+rectangle "Settle" as settle #DDEEFF
+rectangle "pass: SP gets price-fee + stake" as paid #DDEEFF
+rectangle "fail: writer gets price-fee + stake" as refund #DDEEFF
+probe --> respond
+respond --> verify
+probe --> timeout
+verify --> probe
+timeout --> probe
+lost --> respond
+slow ..> respond
+facade --> verify
+drop ..> respond
+cut ..> respond
+part ..> respond
+pay --> probe
+verify --> pos
+timeout --> pos
+pos --> prove
+prove --> settle
+settle --> paid
+settle --> refund
+legend bottom
+|= kind |= name |= TLC result |
+| invariant | NeverPaid | <color:red><b>violated (expected)</b></color> |
+endlegend
+@enduml
+
+@startuml EconPoS_facade_gain
+left to right direction
+skinparam shadowing false
+skinparam roundCorner 12
+title EconPoS_facade_gain  (EconPoS.tla) - negative test: a violation is expected
+header deadline >= relay: the facade SP profits more than an honest one (violation expected)
+rectangle "Probe\n(broker, coverage first)" as probe #DDEEFF
+rectangle "Respond\n(SP holds the chunk)" as respond #DDEEFF
+rectangle "Verify\n(HMAC + deadline)" as verify #DDEEFF
+rectangle "Timeout\n(no answer within Budget=2)" as timeout #DDEEFF
+rectangle "Lost chunk\nHeldInit={c1}" as lost #FFB3B3
+rectangle "Slow SP\nMaxLat=1 > Budget=2\n(off)" as slow #F2F2F2;line.dotted;line:grey
+rectangle "Facade relay\nOther={c2} RelayLat=2" as facade #FFB3B3
+rectangle "DropChunk\n(AllowDrop)\n(off)" as drop #F2F2F2;line.dotted;line:grey
+rectangle "Partition\nPartLen=0\n(off)" as cut #F2F2F2;line.dotted;line:grey
+rectangle "Partial holder\nHeldRanges={r1, r2}\n(off)" as part #F2F2F2;line.dotted;line:grey
+rectangle "Pay\nprice + SP stake=20 -> escrow" as pay #DDEEFF
+rectangle "PoS period (pos/PoS.tla)\nprobes until closed" as pos #DDEEFF
+rectangle "Prove\nverdict = PoS proof" as prove #DDEEFF
+rectangle "Settle" as settle #DDEEFF
+rectangle "pass: SP gets price-fee + stake" as paid #DDEEFF
+rectangle "fail: writer gets price-fee + stake" as refund #DDEEFF
+probe --> respond
+respond --> verify
+probe --> timeout
+verify --> probe
+timeout --> probe
+lost --> respond
+slow ..> respond
+facade --> verify
+drop ..> respond
+cut ..> respond
+part ..> respond
+pay --> probe
+verify --> pos
+timeout --> pos
+pos --> prove
+prove --> settle
+settle --> paid
+settle --> refund
+legend bottom
+|= kind |= name |= TLC result |
+| invariant | NoGain | <color:red><b>violated (expected)</b></color> |
+endlegend
+@enduml
+
+@startuml EconPoS_nostake
+left to right direction
+skinparam shadowing false
+skinparam roundCorner 12
+title EconPoS_nostake  (EconPoS.tla) - negative test: a violation is expected
+header no stake: a failed proof costs the writer the fee (violation expected)
+rectangle "Probe\n(broker, coverage first)" as probe #DDEEFF
+rectangle "Respond\n(SP holds the chunk)" as respond #DDEEFF
+rectangle "Verify\n(HMAC + deadline)" as verify #DDEEFF
+rectangle "Timeout\n(no answer within Budget=1)" as timeout #DDEEFF
+rectangle "Lost chunk\nHeldInit={c1}" as lost #FFB3B3
+rectangle "Slow SP\nMaxLat=1 > Budget=1\n(off)" as slow #F2F2F2;line.dotted;line:grey
+rectangle "Facade relay\nOther={} RelayLat=2\n(off)" as facade #F2F2F2;line.dotted;line:grey
+rectangle "DropChunk\n(AllowDrop)\n(off)" as drop #F2F2F2;line.dotted;line:grey
+rectangle "Partition\nPartLen=0\n(off)" as cut #F2F2F2;line.dotted;line:grey
+rectangle "Partial holder\nHeldRanges={r1, r2}\n(off)" as part #F2F2F2;line.dotted;line:grey
+rectangle "Pay\nprice + SP stake=0 -> escrow" as pay #DDEEFF
+rectangle "PoS period (pos/PoS.tla)\nprobes until closed" as pos #DDEEFF
+rectangle "Prove\nverdict = PoS proof" as prove #DDEEFF
+rectangle "Settle" as settle #DDEEFF
+rectangle "pass: SP gets price-fee + stake" as paid #DDEEFF
+rectangle "fail: writer gets price-fee + stake" as refund #DDEEFF
+probe --> respond
+respond --> verify
+probe --> timeout
+verify --> probe
+timeout --> probe
+lost --> respond
+slow ..> respond
+facade ..> verify
+drop ..> respond
+cut ..> respond
+part ..> respond
+pay --> probe
+verify --> pos
+timeout --> pos
+pos --> prove
+prove --> settle
+settle --> paid
+settle --> refund
+legend bottom
+|= kind |= name |= TLC result |
+| invariant | WriterWhole | <color:red><b>violated (expected)</b></color> |
+endlegend
+@enduml
+
+@startuml EconPoS_part_long
+left to right direction
+skinparam shadowing false
+skinparam roundCorner 12
+title EconPoS_part_long  (EconPoS.tla) - negative test: a violation is expected
+header partition of 4 ticks: the honest SP loses payout and stake (violation expected)
+rectangle "Probe\n(broker, coverage first)" as probe #DDEEFF
+rectangle "Respond\n(SP holds the chunk)" as respond #DDEEFF
+rectangle "Verify\n(HMAC + deadline)" as verify #DDEEFF
+rectangle "Timeout\n(no answer within Budget=1)" as timeout #DDEEFF
+rectangle "Lost chunk\nHeldInit={c1, c2}\n(off)" as lost #F2F2F2;line.dotted;line:grey
+rectangle "Slow SP\nMaxLat=1 > Budget=1\n(off)" as slow #F2F2F2;line.dotted;line:grey
+rectangle "Facade relay\nOther={} RelayLat=2\n(off)" as facade #F2F2F2;line.dotted;line:grey
+rectangle "DropChunk\n(AllowDrop)\n(off)" as drop #F2F2F2;line.dotted;line:grey
+rectangle "Partition\nPartLen=4" as cut #FFB3B3
+rectangle "Partial holder\nHeldRanges={r1, r2}\n(off)" as part #F2F2F2;line.dotted;line:grey
+rectangle "Pay\nprice + SP stake=20 -> escrow" as pay #DDEEFF
+rectangle "PoS period (pos/PoS.tla)\nprobes until closed" as pos #DDEEFF
+rectangle "Prove\nverdict = PoS proof" as prove #DDEEFF
+rectangle "Settle" as settle #DDEEFF
+rectangle "pass: SP gets price-fee + stake" as paid #DDEEFF
+rectangle "fail: writer gets price-fee + stake" as refund #DDEEFF
+probe --> respond
+respond --> verify
+probe --> timeout
+verify --> probe
+timeout --> probe
+lost ..> respond
+slow ..> respond
+facade ..> verify
+drop ..> respond
+cut --> respond
+part ..> respond
+pay --> probe
+verify --> pos
+timeout --> pos
+pos --> prove
+prove --> settle
+settle --> paid
+settle --> refund
+legend bottom
+|= kind |= name |= TLC result |
+| invariant | NeverRefunded | <color:red><b>violated (expected)</b></color> |
+endlegend
+@enduml
+
+@startuml EconPoS_slow
+left to right direction
+skinparam shadowing false
+skinparam roundCorner 12
+title EconPoS_slow  (EconPoS.tla) - negative test: a violation is expected
+header slow SP: refunded (violation expected)
+rectangle "Probe\n(broker, coverage first)" as probe #DDEEFF
+rectangle "Respond\n(SP holds the chunk)" as respond #DDEEFF
+rectangle "Verify\n(HMAC + deadline)" as verify #DDEEFF
+rectangle "Timeout\n(no answer within Budget=1)" as timeout #DDEEFF
+rectangle "Lost chunk\nHeldInit={c1, c2}\n(off)" as lost #F2F2F2;line.dotted;line:grey
+rectangle "Slow SP\nMaxLat=3 > Budget=1" as slow #FFB3B3
+rectangle "Facade relay\nOther={} RelayLat=2\n(off)" as facade #F2F2F2;line.dotted;line:grey
+rectangle "DropChunk\n(AllowDrop)\n(off)" as drop #F2F2F2;line.dotted;line:grey
+rectangle "Partition\nPartLen=0\n(off)" as cut #F2F2F2;line.dotted;line:grey
+rectangle "Partial holder\nHeldRanges={r1, r2}\n(off)" as part #F2F2F2;line.dotted;line:grey
+rectangle "Pay\nprice + SP stake=20 -> escrow" as pay #DDEEFF
+rectangle "PoS period (pos/PoS.tla)\nprobes until closed" as pos #DDEEFF
+rectangle "Prove\nverdict = PoS proof" as prove #DDEEFF
+rectangle "Settle" as settle #DDEEFF
+rectangle "pass: SP gets price-fee + stake" as paid #DDEEFF
+rectangle "fail: writer gets price-fee + stake" as refund #DDEEFF
+probe --> respond
+respond --> verify
+probe --> timeout
+verify --> probe
+timeout --> probe
+lost ..> respond
+slow --> respond
+facade ..> verify
+drop ..> respond
+cut ..> respond
+part ..> respond
+pay --> probe
+verify --> pos
+timeout --> pos
+pos --> prove
+prove --> settle
+settle --> paid
+settle --> refund
+legend bottom
+|= kind |= name |= TLC result |
+| invariant | NeverRefunded | <color:red><b>violated (expected)</b></color> |
+endlegend
+@enduml
+
+@startuml Restore_nack_honest
+left to right direction
+skinparam shadowing false
+skinparam roundCorner 12
+title Restore_nack_honest  (Restore.tla) - all checks must hold
+header SP delivers a bad chunk and fails the probe: honest nack, the SP is blamed
+rectangle "Request\nreader escrows N=3 x price + fee" as req #DDEEFF
+rectangle "Ask SP for chunk" as ask #DDEEFF
+rectangle "Deliver chunk + note\n(perchunk: after previous ack)" as deliver #DDEEFF
+rectangle "Ack\n(perchunk: releases price)" as ack #DDEEFF
+rectangle "Nack -> Judge\n(broker probes the SP)" as nack #DDEEFF
+rectangle "Release\n(policy 'perchunk')" as rel #DDEEFF
+rectangle "Timeout after Window=2\nboth reputations lowered" as timeout #DDEEFF
+rectangle "Close\nrest of escrow -> reader" as close #DDEEFF
+rectangle "Faulty SP\ndelivers nothing\n(off)" as sp #F2F2F2;line.dotted;line:grey
+rectangle "Corrupt SP\nbad chunks, probe fails" as bad #FFB3B3
+rectangle "Reader withholds acks\n(off)" as rd #F2F2F2;line.dotted;line:grey
+rectangle "Reader idle\nnever asks the SP\n(off)" as idle #F2F2F2;line.dotted;line:grey
+rectangle "Reader lies\nnacks good chunks\n(off)" as lie #F2F2F2;line.dotted;line:grey
+rectangle "Fee refunded\n(off)" as refund #F2F2F2;line.dotted;line:grey
+rectangle "Policy: perchunk" as pol #BBEEBB
+rectangle "Probe on nack" as probe #BBEEBB
+rectangle "Signed deliveries\n(off)" as sig #F2F2F2;line.dotted;line:grey
+rectangle "Timeout penalty" as pen #BBEEBB
+req --> ask
+ask --> deliver
+deliver --> ack
+deliver --> nack
+ack --> rel
+rel --> close
+nack --> close
+timeout --> close
+sp ..> deliver
+bad --> nack
+rd ..> ack
+idle ..> ask
+lie ..> nack
+refund ..> close
+probe --> nack
+sig ..> nack
+pen --> timeout
+legend bottom
+|= kind |= name |= TLC result |
+| invariant | TypeOK | <color:green><b>holds</b></color> |
+| invariant | EscrowCovers | <color:green><b>holds</b></color> |
+| invariant | MoneyConserved | <color:green><b>holds</b></color> |
+| invariant | FeeKept | <color:green><b>holds</b></color> |
+| invariant | SpLossBounded | <color:green><b>holds</b></color> |
+| invariant | ReaderLossBounded | <color:green><b>holds</b></color> |
+| invariant | Complete | <color:green><b>holds</b></color> |
+| invariant | HonestNotBlamed | <color:green><b>holds</b></color> |
+| invariant | ReaderPenalised | <color:green><b>holds</b></color> |
+| invariant | SpPenalised | <color:green><b>holds</b></color> |
+| invariant | NackJudged | <color:green><b>holds</b></color> |
+| property | Terminates | <color:green><b>holds</b></color> |
+endlegend
+@enduml
+
+@startuml Restore_nack_lie
+left to right direction
+skinparam shadowing false
+skinparam roundCorner 12
+title Restore_nack_lie  (Restore.tla) - all checks must hold
+header reader nacks good chunks: the probe refutes it, the reader is blamed, the SP paid
+rectangle "Request\nreader escrows N=3 x price + fee" as req #DDEEFF
+rectangle "Ask SP for chunk" as ask #DDEEFF
+rectangle "Deliver chunk + note\n(perchunk: after previous ack)" as deliver #DDEEFF
+rectangle "Ack\n(perchunk: releases price)" as ack #DDEEFF
+rectangle "Nack -> Judge\n(broker probes the SP)" as nack #DDEEFF
+rectangle "Release\n(policy 'perchunk')" as rel #DDEEFF
+rectangle "Timeout after Window=2\nboth reputations lowered" as timeout #DDEEFF
+rectangle "Close\nrest of escrow -> reader" as close #DDEEFF
+rectangle "Faulty SP\ndelivers nothing\n(off)" as sp #F2F2F2;line.dotted;line:grey
+rectangle "Corrupt SP\nbad chunks, probe passes\n(off)" as bad #F2F2F2;line.dotted;line:grey
+rectangle "Reader withholds acks\n(off)" as rd #F2F2F2;line.dotted;line:grey
+rectangle "Reader idle\nnever asks the SP\n(off)" as idle #F2F2F2;line.dotted;line:grey
+rectangle "Reader lies\nnacks good chunks" as lie #FFB3B3
+rectangle "Fee refunded\n(off)" as refund #F2F2F2;line.dotted;line:grey
+rectangle "Policy: perchunk" as pol #BBEEBB
+rectangle "Probe on nack" as probe #BBEEBB
+rectangle "Signed deliveries\n(off)" as sig #F2F2F2;line.dotted;line:grey
+rectangle "Timeout penalty" as pen #BBEEBB
+req --> ask
+ask --> deliver
+deliver --> ack
+deliver --> nack
+ack --> rel
+rel --> close
+nack --> close
+timeout --> close
+sp ..> deliver
+bad ..> nack
+rd ..> ack
+idle ..> ask
+lie --> nack
+refund ..> close
+probe --> nack
+sig ..> nack
+pen --> timeout
+legend bottom
+|= kind |= name |= TLC result |
+| invariant | TypeOK | <color:green><b>holds</b></color> |
+| invariant | EscrowCovers | <color:green><b>holds</b></color> |
+| invariant | MoneyConserved | <color:green><b>holds</b></color> |
+| invariant | FeeKept | <color:green><b>holds</b></color> |
+| invariant | SpLossBounded | <color:green><b>holds</b></color> |
+| invariant | ReaderLossBounded | <color:green><b>holds</b></color> |
+| invariant | Complete | <color:green><b>holds</b></color> |
+| invariant | HonestNotBlamed | <color:green><b>holds</b></color> |
+| invariant | ReaderPenalised | <color:green><b>holds</b></color> |
+| invariant | SpPenalised | <color:green><b>holds</b></color> |
+| invariant | NackJudged | <color:green><b>holds</b></color> |
+| property | Terminates | <color:green><b>holds</b></color> |
+endlegend
+@enduml
+
+@startuml Restore_nack_signed
+left to right direction
+skinparam shadowing false
+skinparam roundCorner 12
+title Restore_nack_signed  (Restore.tla) - all checks must hold
+header SP sends a bad chunk but passes the probe; the delivery is signed, so the SP is blamed (remedy for Restore_nack_selective)
+rectangle "Request\nreader escrows N=3 x price + fee" as req #DDEEFF
+rectangle "Ask SP for chunk" as ask #DDEEFF
+rectangle "Deliver chunk + note\n(perchunk: after previous ack)" as deliver #DDEEFF
+rectangle "Ack\n(perchunk: releases price)" as ack #DDEEFF
+rectangle "Nack -> Judge\n(broker probes the SP)" as nack #DDEEFF
+rectangle "Release\n(policy 'perchunk')" as rel #DDEEFF
+rectangle "Timeout after Window=2\nboth reputations lowered" as timeout #DDEEFF
+rectangle "Close\nrest of escrow -> reader" as close #DDEEFF
+rectangle "Faulty SP\ndelivers nothing\n(off)" as sp #F2F2F2;line.dotted;line:grey
+rectangle "Corrupt SP\nbad chunks, probe passes" as bad #FFB3B3
+rectangle "Reader withholds acks\n(off)" as rd #F2F2F2;line.dotted;line:grey
+rectangle "Reader idle\nnever asks the SP\n(off)" as idle #F2F2F2;line.dotted;line:grey
+rectangle "Reader lies\nnacks good chunks\n(off)" as lie #F2F2F2;line.dotted;line:grey
+rectangle "Fee refunded\n(off)" as refund #F2F2F2;line.dotted;line:grey
+rectangle "Policy: perchunk" as pol #BBEEBB
+rectangle "Probe on nack" as probe #BBEEBB
+rectangle "Signed deliveries" as sig #BBEEBB
+rectangle "Timeout penalty" as pen #BBEEBB
+req --> ask
+ask --> deliver
+deliver --> ack
+deliver --> nack
+ack --> rel
+rel --> close
+nack --> close
+timeout --> close
+sp ..> deliver
+bad --> nack
+rd ..> ack
+idle ..> ask
+lie ..> nack
+refund ..> close
+probe --> nack
+sig --> nack
+pen --> timeout
+legend bottom
+|= kind |= name |= TLC result |
+| invariant | TypeOK | <color:green><b>holds</b></color> |
+| invariant | EscrowCovers | <color:green><b>holds</b></color> |
+| invariant | MoneyConserved | <color:green><b>holds</b></color> |
+| invariant | FeeKept | <color:green><b>holds</b></color> |
+| invariant | SpLossBounded | <color:green><b>holds</b></color> |
+| invariant | ReaderLossBounded | <color:green><b>holds</b></color> |
+| invariant | Complete | <color:green><b>holds</b></color> |
+| invariant | HonestNotBlamed | <color:green><b>holds</b></color> |
+| invariant | ReaderPenalised | <color:green><b>holds</b></color> |
+| invariant | SpPenalised | <color:green><b>holds</b></color> |
+| invariant | NackJudged | <color:green><b>holds</b></color> |
+| property | Terminates | <color:green><b>holds</b></color> |
+endlegend
+@enduml
+
+@startuml Restore_perchunk_honest
+left to right direction
+skinparam shadowing false
+skinparam roundCorner 12
+title Restore_perchunk_honest  (Restore.tla) - all checks must hold
+header both honest: complete, no loss, nobody blamed
+rectangle "Request\nreader escrows N=3 x price + fee" as req #DDEEFF
+rectangle "Ask SP for chunk" as ask #DDEEFF
+rectangle "Deliver chunk + note\n(perchunk: after previous ack)" as deliver #DDEEFF
+rectangle "Ack\n(perchunk: releases price)" as ack #DDEEFF
+rectangle "Nack -> Judge\n(broker probes the SP)" as nack #DDEEFF
+rectangle "Release\n(policy 'perchunk')" as rel #DDEEFF
+rectangle "Timeout after Window=2\nboth reputations lowered" as timeout #DDEEFF
+rectangle "Close\nrest of escrow -> reader" as close #DDEEFF
+rectangle "Faulty SP\ndelivers nothing\n(off)" as sp #F2F2F2;line.dotted;line:grey
+rectangle "Corrupt SP\nbad chunks, probe passes\n(off)" as bad #F2F2F2;line.dotted;line:grey
+rectangle "Reader withholds acks\n(off)" as rd #F2F2F2;line.dotted;line:grey
+rectangle "Reader idle\nnever asks the SP\n(off)" as idle #F2F2F2;line.dotted;line:grey
+rectangle "Reader lies\nnacks good chunks\n(off)" as lie #F2F2F2;line.dotted;line:grey
+rectangle "Fee refunded\n(off)" as refund #F2F2F2;line.dotted;line:grey
+rectangle "Policy: perchunk" as pol #BBEEBB
+rectangle "Probe on nack" as probe #BBEEBB
+rectangle "Signed deliveries\n(off)" as sig #F2F2F2;line.dotted;line:grey
+rectangle "Timeout penalty" as pen #BBEEBB
+req --> ask
+ask --> deliver
+deliver --> ack
+deliver --> nack
+ack --> rel
+rel --> close
+nack --> close
+timeout --> close
+sp ..> deliver
+bad ..> nack
+rd ..> ack
+idle ..> ask
+lie ..> nack
+refund ..> close
+probe --> nack
+sig ..> nack
+pen --> timeout
+legend bottom
+|= kind |= name |= TLC result |
+| invariant | TypeOK | <color:green><b>holds</b></color> |
+| invariant | EscrowCovers | <color:green><b>holds</b></color> |
+| invariant | MoneyConserved | <color:green><b>holds</b></color> |
+| invariant | FeeKept | <color:green><b>holds</b></color> |
+| invariant | SpLossBounded | <color:green><b>holds</b></color> |
+| invariant | ReaderLossBounded | <color:green><b>holds</b></color> |
+| invariant | Complete | <color:green><b>holds</b></color> |
+| invariant | HonestNotBlamed | <color:green><b>holds</b></color> |
+| invariant | ReaderPenalised | <color:green><b>holds</b></color> |
+| invariant | SpPenalised | <color:green><b>holds</b></color> |
+| invariant | NackJudged | <color:green><b>holds</b></color> |
+| property | Terminates | <color:green><b>holds</b></color> |
+endlegend
+@enduml
+
+@startuml Restore_perchunk_idle
+left to right direction
+skinparam shadowing false
+skinparam roundCorner 12
+title Restore_perchunk_idle  (Restore.tla) - all checks must hold
+header reader never asks the SP: timeout, escrow refunded, both reputations lowered
+rectangle "Request\nreader escrows N=3 x price + fee" as req #DDEEFF
+rectangle "Ask SP for chunk" as ask #DDEEFF
+rectangle "Deliver chunk + note\n(perchunk: after previous ack)" as deliver #DDEEFF
+rectangle "Ack\n(perchunk: releases price)" as ack #DDEEFF
+rectangle "Nack -> Judge\n(broker probes the SP)" as nack #DDEEFF
+rectangle "Release\n(policy 'perchunk')" as rel #DDEEFF
+rectangle "Timeout after Window=2\nboth reputations lowered" as timeout #DDEEFF
+rectangle "Close\nrest of escrow -> reader" as close #DDEEFF
+rectangle "Faulty SP\ndelivers nothing\n(off)" as sp #F2F2F2;line.dotted;line:grey
+rectangle "Corrupt SP\nbad chunks, probe passes\n(off)" as bad #F2F2F2;line.dotted;line:grey
+rectangle "Reader withholds acks\n(off)" as rd #F2F2F2;line.dotted;line:grey
+rectangle "Reader idle\nnever asks the SP" as idle #FFB3B3
+rectangle "Reader lies\nnacks good chunks\n(off)" as lie #F2F2F2;line.dotted;line:grey
+rectangle "Fee refunded\n(off)" as refund #F2F2F2;line.dotted;line:grey
+rectangle "Policy: perchunk" as pol #BBEEBB
+rectangle "Probe on nack" as probe #BBEEBB
+rectangle "Signed deliveries\n(off)" as sig #F2F2F2;line.dotted;line:grey
+rectangle "Timeout penalty" as pen #BBEEBB
+req --> ask
+ask --> deliver
+deliver --> ack
+deliver --> nack
+ack --> rel
+rel --> close
+nack --> close
+timeout --> close
+sp ..> deliver
+bad ..> nack
+rd ..> ack
+idle --> ask
+lie ..> nack
+refund ..> close
+probe --> nack
+sig ..> nack
+pen --> timeout
+legend bottom
+|= kind |= name |= TLC result |
+| invariant | TypeOK | <color:green><b>holds</b></color> |
+| invariant | EscrowCovers | <color:green><b>holds</b></color> |
+| invariant | MoneyConserved | <color:green><b>holds</b></color> |
+| invariant | FeeKept | <color:green><b>holds</b></color> |
+| invariant | SpLossBounded | <color:green><b>holds</b></color> |
+| invariant | ReaderLossBounded | <color:green><b>holds</b></color> |
+| invariant | Complete | <color:green><b>holds</b></color> |
+| invariant | HonestNotBlamed | <color:green><b>holds</b></color> |
+| invariant | ReaderPenalised | <color:green><b>holds</b></color> |
+| invariant | SpPenalised | <color:green><b>holds</b></color> |
+| invariant | NackJudged | <color:green><b>holds</b></color> |
+| property | Terminates | <color:green><b>holds</b></color> |
+endlegend
+@enduml
+
+@startuml Restore_perchunk_reader
+left to right direction
+skinparam shadowing false
+skinparam roundCorner 12
+title Restore_perchunk_reader  (Restore.tla) - all checks must hold
+header reader withholds acks: the SP loses at most one chunk; timeout lowers both reputations
+rectangle "Request\nreader escrows N=3 x price + fee" as req #DDEEFF
+rectangle "Ask SP for chunk" as ask #DDEEFF
+rectangle "Deliver chunk + note\n(perchunk: after previous ack)" as deliver #DDEEFF
+rectangle "Ack\n(perchunk: releases price)" as ack #DDEEFF
+rectangle "Nack -> Judge\n(broker probes the SP)" as nack #DDEEFF
+rectangle "Release\n(policy 'perchunk')" as rel #DDEEFF
+rectangle "Timeout after Window=2\nboth reputations lowered" as timeout #DDEEFF
+rectangle "Close\nrest of escrow -> reader" as close #DDEEFF
+rectangle "Faulty SP\ndelivers nothing\n(off)" as sp #F2F2F2;line.dotted;line:grey
+rectangle "Corrupt SP\nbad chunks, probe passes\n(off)" as bad #F2F2F2;line.dotted;line:grey
+rectangle "Reader withholds acks" as rd #FFB3B3
+rectangle "Reader idle\nnever asks the SP\n(off)" as idle #F2F2F2;line.dotted;line:grey
+rectangle "Reader lies\nnacks good chunks\n(off)" as lie #F2F2F2;line.dotted;line:grey
+rectangle "Fee refunded\n(off)" as refund #F2F2F2;line.dotted;line:grey
+rectangle "Policy: perchunk" as pol #BBEEBB
+rectangle "Probe on nack" as probe #BBEEBB
+rectangle "Signed deliveries\n(off)" as sig #F2F2F2;line.dotted;line:grey
+rectangle "Timeout penalty" as pen #BBEEBB
+req --> ask
+ask --> deliver
+deliver --> ack
+deliver --> nack
+ack --> rel
+rel --> close
+nack --> close
+timeout --> close
+sp ..> deliver
+bad ..> nack
+rd --> ack
+idle ..> ask
+lie ..> nack
+refund ..> close
+probe --> nack
+sig ..> nack
+pen --> timeout
+legend bottom
+|= kind |= name |= TLC result |
+| invariant | TypeOK | <color:green><b>holds</b></color> |
+| invariant | EscrowCovers | <color:green><b>holds</b></color> |
+| invariant | MoneyConserved | <color:green><b>holds</b></color> |
+| invariant | FeeKept | <color:green><b>holds</b></color> |
+| invariant | SpLossBounded | <color:green><b>holds</b></color> |
+| invariant | ReaderLossBounded | <color:green><b>holds</b></color> |
+| invariant | Complete | <color:green><b>holds</b></color> |
+| invariant | HonestNotBlamed | <color:green><b>holds</b></color> |
+| invariant | ReaderPenalised | <color:green><b>holds</b></color> |
+| invariant | SpPenalised | <color:green><b>holds</b></color> |
+| invariant | NackJudged | <color:green><b>holds</b></color> |
+| property | Terminates | <color:green><b>holds</b></color> |
+endlegend
+@enduml
+
+@startuml Restore_perchunk_sp
+left to right direction
+skinparam shadowing false
+skinparam roundCorner 12
+title Restore_perchunk_sp  (Restore.tla) - all checks must hold
+header faulty SP: the reader loses nothing; timeout lowers both reputations
+rectangle "Request\nreader escrows N=3 x price + fee" as req #DDEEFF
+rectangle "Ask SP for chunk" as ask #DDEEFF
+rectangle "Deliver chunk + note\n(perchunk: after previous ack)" as deliver #DDEEFF
+rectangle "Ack\n(perchunk: releases price)" as ack #DDEEFF
+rectangle "Nack -> Judge\n(broker probes the SP)" as nack #DDEEFF
+rectangle "Release\n(policy 'perchunk')" as rel #DDEEFF
+rectangle "Timeout after Window=2\nboth reputations lowered" as timeout #DDEEFF
+rectangle "Close\nrest of escrow -> reader" as close #DDEEFF
+rectangle "Faulty SP\ndelivers nothing" as sp #FFB3B3
+rectangle "Corrupt SP\nbad chunks, probe passes\n(off)" as bad #F2F2F2;line.dotted;line:grey
+rectangle "Reader withholds acks\n(off)" as rd #F2F2F2;line.dotted;line:grey
+rectangle "Reader idle\nnever asks the SP\n(off)" as idle #F2F2F2;line.dotted;line:grey
+rectangle "Reader lies\nnacks good chunks\n(off)" as lie #F2F2F2;line.dotted;line:grey
+rectangle "Fee refunded\n(off)" as refund #F2F2F2;line.dotted;line:grey
+rectangle "Policy: perchunk" as pol #BBEEBB
+rectangle "Probe on nack" as probe #BBEEBB
+rectangle "Signed deliveries\n(off)" as sig #F2F2F2;line.dotted;line:grey
+rectangle "Timeout penalty" as pen #BBEEBB
+req --> ask
+ask --> deliver
+deliver --> ack
+deliver --> nack
+ack --> rel
+rel --> close
+nack --> close
+timeout --> close
+sp --> deliver
+bad ..> nack
+rd ..> ack
+idle ..> ask
+lie ..> nack
+refund ..> close
+probe --> nack
+sig ..> nack
+pen --> timeout
+legend bottom
+|= kind |= name |= TLC result |
+| invariant | TypeOK | <color:green><b>holds</b></color> |
+| invariant | EscrowCovers | <color:green><b>holds</b></color> |
+| invariant | MoneyConserved | <color:green><b>holds</b></color> |
+| invariant | FeeKept | <color:green><b>holds</b></color> |
+| invariant | SpLossBounded | <color:green><b>holds</b></color> |
+| invariant | ReaderLossBounded | <color:green><b>holds</b></color> |
+| invariant | Complete | <color:green><b>holds</b></color> |
+| invariant | HonestNotBlamed | <color:green><b>holds</b></color> |
+| invariant | ReaderPenalised | <color:green><b>holds</b></color> |
+| invariant | SpPenalised | <color:green><b>holds</b></color> |
+| invariant | NackJudged | <color:green><b>holds</b></color> |
+| property | Terminates | <color:green><b>holds</b></color> |
+endlegend
+@enduml
+
+@startuml Restore_tier
+left to right direction
+skinparam shadowing false
+skinparam roundCorner 12
+title Restore_tier  (Restore.tla) - all checks must hold
+header withholding reader, Thr = 90: one timeout (100 -> 87) puts the next restore in the high fee tier
+rectangle "Request\nreader escrows N=3 x price + fee" as req #DDEEFF
+rectangle "Ask SP for chunk" as ask #DDEEFF
+rectangle "Deliver chunk + note\n(perchunk: after previous ack)" as deliver #DDEEFF
+rectangle "Ack\n(perchunk: releases price)" as ack #DDEEFF
+rectangle "Nack -> Judge\n(broker probes the SP)" as nack #DDEEFF
+rectangle "Release\n(policy 'perchunk')" as rel #DDEEFF
+rectangle "Timeout after Window=2\nboth reputations lowered" as timeout #DDEEFF
+rectangle "Close\nrest of escrow -> reader" as close #DDEEFF
+rectangle "Faulty SP\ndelivers nothing\n(off)" as sp #F2F2F2;line.dotted;line:grey
+rectangle "Corrupt SP\nbad chunks, probe passes\n(off)" as bad #F2F2F2;line.dotted;line:grey
+rectangle "Reader withholds acks" as rd #FFB3B3
+rectangle "Reader idle\nnever asks the SP\n(off)" as idle #F2F2F2;line.dotted;line:grey
+rectangle "Reader lies\nnacks good chunks\n(off)" as lie #F2F2F2;line.dotted;line:grey
+rectangle "Fee refunded\n(off)" as refund #F2F2F2;line.dotted;line:grey
+rectangle "Policy: perchunk" as pol #BBEEBB
+rectangle "Probe on nack" as probe #BBEEBB
+rectangle "Signed deliveries\n(off)" as sig #F2F2F2;line.dotted;line:grey
+rectangle "Timeout penalty" as pen #BBEEBB
+req --> ask
+ask --> deliver
+deliver --> ack
+deliver --> nack
+ack --> rel
+rel --> close
+nack --> close
+timeout --> close
+sp ..> deliver
+bad ..> nack
+rd --> ack
+idle ..> ask
+lie ..> nack
+refund ..> close
+probe --> nack
+sig ..> nack
+pen --> timeout
+legend bottom
+|= kind |= name |= TLC result |
+| invariant | TypeOK | <color:green><b>holds</b></color> |
+| invariant | TierRaised | <color:green><b>holds</b></color> |
+endlegend
+@enduml
+
+@startuml Restore_after_reader
+left to right direction
+skinparam shadowing false
+skinparam roundCorner 12
+title Restore_after_reader  (Restore.tla) - negative test: a violation is expected
+header release after delivery + reader withholds: the SP loses N chunk prices (violation expected)
+rectangle "Request\nreader escrows N=3 x price + fee" as req #DDEEFF
+rectangle "Ask SP for chunk" as ask #DDEEFF
+rectangle "Deliver chunk + note\n(perchunk: after previous ack)" as deliver #DDEEFF
+rectangle "Ack\n(perchunk: releases price)" as ack #DDEEFF
+rectangle "Nack -> Judge\n(broker probes the SP)" as nack #DDEEFF
+rectangle "Release\n(policy 'after')" as rel #DDEEFF
+rectangle "Timeout after Window=2\nboth reputations lowered" as timeout #DDEEFF
+rectangle "Close\nrest of escrow -> reader" as close #DDEEFF
+rectangle "Faulty SP\ndelivers nothing\n(off)" as sp #F2F2F2;line.dotted;line:grey
+rectangle "Corrupt SP\nbad chunks, probe passes\n(off)" as bad #F2F2F2;line.dotted;line:grey
+rectangle "Reader withholds acks" as rd #FFB3B3
+rectangle "Reader idle\nnever asks the SP\n(off)" as idle #F2F2F2;line.dotted;line:grey
+rectangle "Reader lies\nnacks good chunks\n(off)" as lie #F2F2F2;line.dotted;line:grey
+rectangle "Fee refunded\n(off)" as refund #F2F2F2;line.dotted;line:grey
+rectangle "Policy: after\n(off)" as pol #F2F2F2;line.dotted;line:grey
+rectangle "Probe on nack" as probe #BBEEBB
+rectangle "Signed deliveries\n(off)" as sig #F2F2F2;line.dotted;line:grey
+rectangle "Timeout penalty" as pen #BBEEBB
+req --> ask
+ask --> deliver
+deliver --> ack
+deliver --> nack
+ack --> rel
+rel --> close
+nack --> close
+timeout --> close
+sp ..> deliver
+bad ..> nack
+rd --> ack
+idle ..> ask
+lie ..> nack
+refund ..> close
+probe --> nack
+sig ..> nack
+pen --> timeout
+legend bottom
+|= kind |= name |= TLC result |
+| invariant | SpLossBounded | <color:red><b>violated (expected)</b></color> |
+endlegend
+@enduml
+
+@startuml Restore_fee_refund
+left to right direction
+skinparam shadowing false
+skinparam roundCorner 12
+title Restore_fee_refund  (Restore.tla) - negative test: a violation is expected
+header fee refunded on close: a withholding reader gets its fee back (violation expected)
+rectangle "Request\nreader escrows N=3 x price + fee" as req #DDEEFF
+rectangle "Ask SP for chunk" as ask #DDEEFF
+rectangle "Deliver chunk + note\n(perchunk: after previous ack)" as deliver #DDEEFF
+rectangle "Ack\n(perchunk: releases price)" as ack #DDEEFF
+rectangle "Nack -> Judge\n(broker probes the SP)" as nack #DDEEFF
+rectangle "Release\n(policy 'perchunk')" as rel #DDEEFF
+rectangle "Timeout after Window=2\nboth reputations lowered" as timeout #DDEEFF
+rectangle "Close\nrest of escrow -> reader" as close #DDEEFF
+rectangle "Faulty SP\ndelivers nothing\n(off)" as sp #F2F2F2;line.dotted;line:grey
+rectangle "Corrupt SP\nbad chunks, probe passes\n(off)" as bad #F2F2F2;line.dotted;line:grey
+rectangle "Reader withholds acks" as rd #FFB3B3
+rectangle "Reader idle\nnever asks the SP\n(off)" as idle #F2F2F2;line.dotted;line:grey
+rectangle "Reader lies\nnacks good chunks\n(off)" as lie #F2F2F2;line.dotted;line:grey
+rectangle "Fee refunded" as refund #FFB3B3
+rectangle "Policy: perchunk" as pol #BBEEBB
+rectangle "Probe on nack" as probe #BBEEBB
+rectangle "Signed deliveries\n(off)" as sig #F2F2F2;line.dotted;line:grey
+rectangle "Timeout penalty" as pen #BBEEBB
+req --> ask
+ask --> deliver
+deliver --> ack
+deliver --> nack
+ack --> rel
+rel --> close
+nack --> close
+timeout --> close
+sp ..> deliver
+bad ..> nack
+rd --> ack
+idle ..> ask
+lie ..> nack
+refund --> close
+probe --> nack
+sig ..> nack
+pen --> timeout
+legend bottom
+|= kind |= name |= TLC result |
+| invariant | FeeKept | <color:red><b>violated (expected)</b></color> |
+endlegend
+@enduml
+
+@startuml Restore_nack_noprobe
+left to right direction
+skinparam shadowing false
+skinparam roundCorner 12
+title Restore_nack_noprobe  (Restore.tla) - negative test: a violation is expected
+header broker trusts a nack without probing: a lying reader gets a chunk free, the SP is blamed (violation expected)
+rectangle "Request\nreader escrows N=3 x price + fee" as req #DDEEFF
+rectangle "Ask SP for chunk" as ask #DDEEFF
+rectangle "Deliver chunk + note\n(perchunk: after previous ack)" as deliver #DDEEFF
+rectangle "Ack\n(perchunk: releases price)" as ack #DDEEFF
+rectangle "Nack -> Judge\n(broker probes the SP)" as nack #DDEEFF
+rectangle "Release\n(policy 'perchunk')" as rel #DDEEFF
+rectangle "Timeout after Window=2\nboth reputations lowered" as timeout #DDEEFF
+rectangle "Close\nrest of escrow -> reader" as close #DDEEFF
+rectangle "Faulty SP\ndelivers nothing\n(off)" as sp #F2F2F2;line.dotted;line:grey
+rectangle "Corrupt SP\nbad chunks, probe passes\n(off)" as bad #F2F2F2;line.dotted;line:grey
+rectangle "Reader withholds acks\n(off)" as rd #F2F2F2;line.dotted;line:grey
+rectangle "Reader idle\nnever asks the SP\n(off)" as idle #F2F2F2;line.dotted;line:grey
+rectangle "Reader lies\nnacks good chunks" as lie #FFB3B3
+rectangle "Fee refunded\n(off)" as refund #F2F2F2;line.dotted;line:grey
+rectangle "Policy: perchunk" as pol #BBEEBB
+rectangle "Probe on nack\n(off)" as probe #F2F2F2;line.dotted;line:grey
+rectangle "Signed deliveries\n(off)" as sig #F2F2F2;line.dotted;line:grey
+rectangle "Timeout penalty" as pen #BBEEBB
+req --> ask
+ask --> deliver
+deliver --> ack
+deliver --> nack
+ack --> rel
+rel --> close
+nack --> close
+timeout --> close
+sp ..> deliver
+bad ..> nack
+rd ..> ack
+idle ..> ask
+lie --> nack
+refund ..> close
+probe ..> nack
+sig ..> nack
+pen --> timeout
+legend bottom
+|= kind |= name |= TLC result |
+| invariant | NackJudged | <color:red><b>violated (expected)</b></color> |
+endlegend
+@enduml
+
+@startuml Restore_nack_selective
+left to right direction
+skinparam shadowing false
+skinparam roundCorner 12
+title Restore_nack_selective  (Restore.tla) - negative test: a violation is expected
+header SP sends a bad chunk but passes the probe: the honest reader is blamed (violation expected, limit of probing)
+rectangle "Request\nreader escrows N=3 x price + fee" as req #DDEEFF
+rectangle "Ask SP for chunk" as ask #DDEEFF
+rectangle "Deliver chunk + note\n(perchunk: after previous ack)" as deliver #DDEEFF
+rectangle "Ack\n(perchunk: releases price)" as ack #DDEEFF
+rectangle "Nack -> Judge\n(broker probes the SP)" as nack #DDEEFF
+rectangle "Release\n(policy 'perchunk')" as rel #DDEEFF
+rectangle "Timeout after Window=2\nboth reputations lowered" as timeout #DDEEFF
+rectangle "Close\nrest of escrow -> reader" as close #DDEEFF
+rectangle "Faulty SP\ndelivers nothing\n(off)" as sp #F2F2F2;line.dotted;line:grey
+rectangle "Corrupt SP\nbad chunks, probe passes" as bad #FFB3B3
+rectangle "Reader withholds acks\n(off)" as rd #F2F2F2;line.dotted;line:grey
+rectangle "Reader idle\nnever asks the SP\n(off)" as idle #F2F2F2;line.dotted;line:grey
+rectangle "Reader lies\nnacks good chunks\n(off)" as lie #F2F2F2;line.dotted;line:grey
+rectangle "Fee refunded\n(off)" as refund #F2F2F2;line.dotted;line:grey
+rectangle "Policy: perchunk" as pol #BBEEBB
+rectangle "Probe on nack" as probe #BBEEBB
+rectangle "Signed deliveries\n(off)" as sig #F2F2F2;line.dotted;line:grey
+rectangle "Timeout penalty" as pen #BBEEBB
+req --> ask
+ask --> deliver
+deliver --> ack
+deliver --> nack
+ack --> rel
+rel --> close
+nack --> close
+timeout --> close
+sp ..> deliver
+bad --> nack
+rd ..> ack
+idle ..> ask
+lie ..> nack
+refund ..> close
+probe --> nack
+sig ..> nack
+pen --> timeout
+legend bottom
+|= kind |= name |= TLC result |
+| invariant | NackJudged | <color:red><b>violated (expected)</b></color> |
+endlegend
+@enduml
+
+@startuml Restore_nopenalty
+left to right direction
+skinparam shadowing false
+skinparam roundCorner 12
+title Restore_nopenalty  (Restore.tla) - negative test: a violation is expected
+header timeouts without penalty: a withholding reader keeps its reputation (violation expected)
+rectangle "Request\nreader escrows N=3 x price + fee" as req #DDEEFF
+rectangle "Ask SP for chunk" as ask #DDEEFF
+rectangle "Deliver chunk + note\n(perchunk: after previous ack)" as deliver #DDEEFF
+rectangle "Ack\n(perchunk: releases price)" as ack #DDEEFF
+rectangle "Nack -> Judge\n(broker probes the SP)" as nack #DDEEFF
+rectangle "Release\n(policy 'perchunk')" as rel #DDEEFF
+rectangle "Timeout after Window=2\nboth reputations lowered" as timeout #DDEEFF
+rectangle "Close\nrest of escrow -> reader" as close #DDEEFF
+rectangle "Faulty SP\ndelivers nothing\n(off)" as sp #F2F2F2;line.dotted;line:grey
+rectangle "Corrupt SP\nbad chunks, probe passes\n(off)" as bad #F2F2F2;line.dotted;line:grey
+rectangle "Reader withholds acks" as rd #FFB3B3
+rectangle "Reader idle\nnever asks the SP\n(off)" as idle #F2F2F2;line.dotted;line:grey
+rectangle "Reader lies\nnacks good chunks\n(off)" as lie #F2F2F2;line.dotted;line:grey
+rectangle "Fee refunded\n(off)" as refund #F2F2F2;line.dotted;line:grey
+rectangle "Policy: perchunk" as pol #BBEEBB
+rectangle "Probe on nack" as probe #BBEEBB
+rectangle "Signed deliveries\n(off)" as sig #F2F2F2;line.dotted;line:grey
+rectangle "Timeout penalty\n(off)" as pen #F2F2F2;line.dotted;line:grey
+req --> ask
+ask --> deliver
+deliver --> ack
+deliver --> nack
+ack --> rel
+rel --> close
+nack --> close
+timeout --> close
+sp ..> deliver
+bad ..> nack
+rd --> ack
+idle ..> ask
+lie ..> nack
+refund ..> close
+probe --> nack
+sig ..> nack
+pen ..> timeout
+legend bottom
+|= kind |= name |= TLC result |
+| invariant | ReaderPenalised | <color:red><b>violated (expected)</b></color> |
+endlegend
+@enduml
+
+@startuml Restore_tier_soft
+left to right direction
+skinparam shadowing false
+skinparam roundCorner 12
+title Restore_tier_soft  (Restore.tla) - negative test: a violation is expected
+header withholding reader, Thr = 70: one timeout (100 -> 87) leaves the fee tier unchanged, reputation is a soft price (violation expected)
+rectangle "Request\nreader escrows N=3 x price + fee" as req #DDEEFF
+rectangle "Ask SP for chunk" as ask #DDEEFF
+rectangle "Deliver chunk + note\n(perchunk: after previous ack)" as deliver #DDEEFF
+rectangle "Ack\n(perchunk: releases price)" as ack #DDEEFF
+rectangle "Nack -> Judge\n(broker probes the SP)" as nack #DDEEFF
+rectangle "Release\n(policy 'perchunk')" as rel #DDEEFF
+rectangle "Timeout after Window=2\nboth reputations lowered" as timeout #DDEEFF
+rectangle "Close\nrest of escrow -> reader" as close #DDEEFF
+rectangle "Faulty SP\ndelivers nothing\n(off)" as sp #F2F2F2;line.dotted;line:grey
+rectangle "Corrupt SP\nbad chunks, probe passes\n(off)" as bad #F2F2F2;line.dotted;line:grey
+rectangle "Reader withholds acks" as rd #FFB3B3
+rectangle "Reader idle\nnever asks the SP\n(off)" as idle #F2F2F2;line.dotted;line:grey
+rectangle "Reader lies\nnacks good chunks\n(off)" as lie #F2F2F2;line.dotted;line:grey
+rectangle "Fee refunded\n(off)" as refund #F2F2F2;line.dotted;line:grey
+rectangle "Policy: perchunk" as pol #BBEEBB
+rectangle "Probe on nack" as probe #BBEEBB
+rectangle "Signed deliveries\n(off)" as sig #F2F2F2;line.dotted;line:grey
+rectangle "Timeout penalty" as pen #BBEEBB
+req --> ask
+ask --> deliver
+deliver --> ack
+deliver --> nack
+ack --> rel
+rel --> close
+nack --> close
+timeout --> close
+sp ..> deliver
+bad ..> nack
+rd --> ack
+idle ..> ask
+lie ..> nack
+refund ..> close
+probe --> nack
+sig ..> nack
+pen --> timeout
+legend bottom
+|= kind |= name |= TLC result |
+| invariant | TierRaised | <color:red><b>violated (expected)</b></color> |
+endlegend
+@enduml
+
+@startuml Restore_upfront_sp
+left to right direction
+skinparam shadowing false
+skinparam roundCorner 12
+title Restore_upfront_sp  (Restore.tla) - negative test: a violation is expected
+header upfront release + faulty SP: the reader loses N chunk prices (violation expected)
+rectangle "Request\nreader escrows N=3 x price + fee" as req #DDEEFF
+rectangle "Ask SP for chunk" as ask #DDEEFF
+rectangle "Deliver chunk + note\n(perchunk: after previous ack)" as deliver #DDEEFF
+rectangle "Ack\n(perchunk: releases price)" as ack #DDEEFF
+rectangle "Nack -> Judge\n(broker probes the SP)" as nack #DDEEFF
+rectangle "Release\n(policy 'upfront')" as rel #DDEEFF
+rectangle "Timeout after Window=2\nboth reputations lowered" as timeout #DDEEFF
+rectangle "Close\nrest of escrow -> reader" as close #DDEEFF
+rectangle "Faulty SP\ndelivers nothing" as sp #FFB3B3
+rectangle "Corrupt SP\nbad chunks, probe passes\n(off)" as bad #F2F2F2;line.dotted;line:grey
+rectangle "Reader withholds acks\n(off)" as rd #F2F2F2;line.dotted;line:grey
+rectangle "Reader idle\nnever asks the SP\n(off)" as idle #F2F2F2;line.dotted;line:grey
+rectangle "Reader lies\nnacks good chunks\n(off)" as lie #F2F2F2;line.dotted;line:grey
+rectangle "Fee refunded\n(off)" as refund #F2F2F2;line.dotted;line:grey
+rectangle "Policy: upfront\n(off)" as pol #F2F2F2;line.dotted;line:grey
+rectangle "Probe on nack" as probe #BBEEBB
+rectangle "Signed deliveries\n(off)" as sig #F2F2F2;line.dotted;line:grey
+rectangle "Timeout penalty" as pen #BBEEBB
+req --> ask
+ask --> deliver
+deliver --> ack
+deliver --> nack
+ack --> rel
+rel --> close
+nack --> close
+timeout --> close
+sp --> deliver
+bad ..> nack
+rd ..> ack
+idle ..> ask
+lie ..> nack
+refund ..> close
+probe --> nack
+sig ..> nack
+pen --> timeout
+legend bottom
+|= kind |= name |= TLC result |
+| invariant | ReaderLossBounded | <color:red><b>violated (expected)</b></color> |
+endlegend
+@enduml
+
+@startuml Replicas_hysteresis
+left to right direction
+skinparam shadowing false
+skinparam roundCorner 12
+title Replicas_hysteresis  (Replicas.tla) - all checks must hold
+header K failed checks + only below R live copies + pruning: bounded copies, no copy on a blip
+rectangle "Fail / Recover\nF=1 at once, 4 events" as fail #FFB3B3
+rectangle "Check\nstrikes += 1 if down" as check #DDEEFF
+rectangle "Replicate\nafter 2 failed check(s)" as repl #DDEEFF
+rectangle "Prune surplus copy" as prune #BBEEBB
+rectangle "only while live copies < R=2" as live #BBEEBB
+rectangle "Copies pile up\n(never removed)\n(off)" as dup #F2F2F2;line.dotted;line:grey
+fail --> check
+check --> repl
+live --> repl
+repl --> prune
+repl ..> dup
+legend bottom
+|= kind |= name |= TLC result |
+| invariant | TypeOK | <color:green><b>holds</b></color> |
+| invariant | BoundedCopies | <color:green><b>holds</b></color> |
+| invariant | Durable | <color:green><b>holds</b></color> |
+| invariant | NoReplicaWithoutRealFailure | <color:green><b>holds</b></color> |
+endlegend
+@enduml
+
+@startuml Replicas_naive
+left to right direction
+skinparam shadowing false
+skinparam roundCorner 12
+title Replicas_naive  (Replicas.tla) - negative test: a violation is expected
+header replicate on the first failed check, never prune: duplicates pile up (violation expected)
+rectangle "Fail / Recover\nF=1 at once, 4 events" as fail #FFB3B3
+rectangle "Check\nstrikes += 1 if down" as check #DDEEFF
+rectangle "Replicate\nafter 1 failed check(s)" as repl #DDEEFF
+rectangle "Prune surplus copy\n(off)" as prune #F2F2F2;line.dotted;line:grey
+rectangle "only while live copies < R=2\n(off)" as live #F2F2F2;line.dotted;line:grey
+rectangle "Copies pile up\n(never removed)" as dup #FFB3B3
+fail --> check
+check --> repl
+live ..> repl
+repl ..> prune
+repl --> dup
+legend bottom
+|= kind |= name |= TLC result |
+| invariant | BoundedCopies | <color:red><b>violated (expected)</b></color> |
+endlegend
+@enduml
+
+@startuml Replicas_naive_blip
+left to right direction
+skinparam shadowing false
+skinparam roundCorner 12
+title Replicas_naive_blip  (Replicas.tla) - negative test: a violation is expected
+header a transient blip already triggers a copy (violation expected)
+rectangle "Fail / Recover\nF=1 at once, 4 events" as fail #FFB3B3
+rectangle "Check\nstrikes += 1 if down" as check #DDEEFF
+rectangle "Replicate\nafter 1 failed check(s)" as repl #DDEEFF
+rectangle "Prune surplus copy\n(off)" as prune #F2F2F2;line.dotted;line:grey
+rectangle "only while live copies < R=2\n(off)" as live #F2F2F2;line.dotted;line:grey
+rectangle "Copies pile up\n(never removed)" as dup #FFB3B3
+fail --> check
+check --> repl
+live ..> repl
+repl ..> prune
+repl --> dup
+legend bottom
+|= kind |= name |= TLC result |
+| invariant | NoReplicaWithoutRealFailure | <color:red><b>violated (expected)</b></color> |
+endlegend
+@enduml
+
+@startuml Sybil_attested
+left to right direction
+skinparam shadowing false
+skinparam roundCorner 12
+title Sybil_attested  (Sybil.tla) - all checks must hold
+header sybil operator, writer applies the placement rules per operator (attested): all hold
+rectangle "Place replica\nR=2, MaxShare=2" as place #DDEEFF
+rectangle "Store physical copy" as store #DDEEFF
+rectangle "Probe answered -> paid" as paid #DDEEFF
+rectangle "Sybil operator\nSybils={i1, i2}" as syb #FFB3B3
+rectangle "Attested\nrules per operator" as att #BBEEBB
+rectangle "ReplicaBound proofs\none copy per identity\n(off)" as bnd #F2F2F2;line.dotted;line:grey
+place --> store
+store --> paid
+syb --> place
+att --> place
+bnd ..> store
+legend bottom
+|= kind |= name |= TLC result |
+| invariant | TypeOK | <color:green><b>holds</b></color> |
+| invariant | CopiesPaidFor | <color:green><b>holds</b></color> |
+| invariant | Independent | <color:green><b>holds</b></color> |
+| invariant | OperatorShareOK | <color:green><b>holds</b></color> |
+endlegend
+@enduml
+
+@startuml Sybil_bound
+left to right direction
+skinparam shadowing false
+skinparam roundCorner 12
+title Sybil_bound  (Sybil.tla) - all checks must hold
+header replica-bound proofs alone, unattested placement: payment is honest (independence and share are not, see Sybil_unattested, Sybil_share)
+rectangle "Place replica\nR=2, MaxShare=2" as place #DDEEFF
+rectangle "Store physical copy" as store #DDEEFF
+rectangle "Probe answered -> paid" as paid #DDEEFF
+rectangle "Sybil operator\nSybils={i1, i2}" as syb #FFB3B3
+rectangle "Attested\nrules per operator\n(off)" as att #F2F2F2;line.dotted;line:grey
+rectangle "ReplicaBound proofs\none copy per identity" as bnd #BBEEBB
+place --> store
+store --> paid
+syb --> place
+att ..> place
+bnd --> store
+legend bottom
+|= kind |= name |= TLC result |
+| invariant | TypeOK | <color:green><b>holds</b></color> |
+| invariant | CopiesPaidFor | <color:green><b>holds</b></color> |
+endlegend
+@enduml
+
+@startuml Sybil_capacity
+left to right direction
+skinparam shadowing false
+skinparam roundCorner 12
+title Sybil_capacity  (Sybil.tla) - all checks must hold
+header two operators (A = i1+i2, i3) cannot hold 3 chunks x 2 replicas with MaxShare = 2: the file is never fully placed
+rectangle "Place replica\nR=2, MaxShare=2" as place #DDEEFF
+rectangle "Store physical copy" as store #DDEEFF
+rectangle "Probe answered -> paid" as paid #DDEEFF
+rectangle "Sybil operator\nSybils={i1, i2}" as syb #FFB3B3
+rectangle "Attested\nrules per operator" as att #BBEEBB
+rectangle "ReplicaBound proofs\none copy per identity\n(off)" as bnd #F2F2F2;line.dotted;line:grey
+place --> store
+store --> paid
+syb --> place
+att --> place
+bnd ..> store
+legend bottom
+|= kind |= name |= TLC result |
+| invariant | TypeOK | <color:green><b>holds</b></color> |
+| invariant | NeverAllPlaced | <color:green><b>holds</b></color> |
+endlegend
+@enduml
+
+@startuml Sybil_honest
+left to right direction
+skinparam shadowing false
+skinparam roundCorner 12
+title Sybil_honest  (Sybil.tla) - all checks must hold
+header independent operators: all rules hold, even without defences
+rectangle "Place replica\nR=2, MaxShare=2" as place #DDEEFF
+rectangle "Store physical copy" as store #DDEEFF
+rectangle "Probe answered -> paid" as paid #DDEEFF
+rectangle "Sybil operator\nSybils={}\n(off)" as syb #F2F2F2;line.dotted;line:grey
+rectangle "Attested\nrules per operator\n(off)" as att #F2F2F2;line.dotted;line:grey
+rectangle "ReplicaBound proofs\none copy per identity\n(off)" as bnd #F2F2F2;line.dotted;line:grey
+place --> store
+store --> paid
+syb ..> place
+att ..> place
+bnd ..> store
+legend bottom
+|= kind |= name |= TLC result |
+| invariant | TypeOK | <color:green><b>holds</b></color> |
+| invariant | CopiesPaidFor | <color:green><b>holds</b></color> |
+| invariant | Independent | <color:green><b>holds</b></color> |
+| invariant | OperatorShareOK | <color:green><b>holds</b></color> |
+endlegend
+@enduml
+
+@startuml Sybil_dedup
+left to right direction
+skinparam shadowing false
+skinparam roundCorner 12
+title Sybil_dedup  (Sybil.tla) - negative test: a violation is expected
+header writer cannot see operators, proofs not replica-bound: one copy answers for two identities, paid twice (violation expected)
+rectangle "Place replica\nR=2, MaxShare=2" as place #DDEEFF
+rectangle "Store physical copy" as store #DDEEFF
+rectangle "Probe answered -> paid" as paid #DDEEFF
+rectangle "Sybil operator\nSybils={i1, i2}" as syb #FFB3B3
+rectangle "Attested\nrules per operator\n(off)" as att #F2F2F2;line.dotted;line:grey
+rectangle "ReplicaBound proofs\none copy per identity\n(off)" as bnd #F2F2F2;line.dotted;line:grey
+place --> store
+store --> paid
+syb --> place
+att ..> place
+bnd ..> store
+legend bottom
+|= kind |= name |= TLC result |
+| invariant | CopiesPaidFor | <color:red><b>violated (expected)</b></color> |
+endlegend
+@enduml
+
+@startuml Sybil_placeable
+left to right direction
+skinparam shadowing false
+skinparam roundCorner 12
+title Sybil_placeable  (Sybil.tla) - negative test: a violation is expected
+header attested placement over three operators (A, i3, i4) places the whole file (violation expected: the counterexample is the placement)
+rectangle "Place replica\nR=2, MaxShare=2" as place #DDEEFF
+rectangle "Store physical copy" as store #DDEEFF
+rectangle "Probe answered -> paid" as paid #DDEEFF
+rectangle "Sybil operator\nSybils={i1, i2}" as syb #FFB3B3
+rectangle "Attested\nrules per operator" as att #BBEEBB
+rectangle "ReplicaBound proofs\none copy per identity\n(off)" as bnd #F2F2F2;line.dotted;line:grey
+place --> store
+store --> paid
+syb --> place
+att --> place
+bnd ..> store
+legend bottom
+|= kind |= name |= TLC result |
+| invariant | NeverAllPlaced | <color:red><b>violated (expected)</b></color> |
+endlegend
+@enduml
+
+@startuml Sybil_share
+left to right direction
+skinparam shadowing false
+skinparam roundCorner 12
+title Sybil_share  (Sybil.tla) - negative test: a violation is expected
+header writer cannot see operators: one operator holds more than MaxShare chunks (violation expected)
+rectangle "Place replica\nR=2, MaxShare=2" as place #DDEEFF
+rectangle "Store physical copy" as store #DDEEFF
+rectangle "Probe answered -> paid" as paid #DDEEFF
+rectangle "Sybil operator\nSybils={i1, i2}" as syb #FFB3B3
+rectangle "Attested\nrules per operator\n(off)" as att #F2F2F2;line.dotted;line:grey
+rectangle "ReplicaBound proofs\none copy per identity" as bnd #BBEEBB
+place --> store
+store --> paid
+syb --> place
+att ..> place
+bnd --> store
+legend bottom
+|= kind |= name |= TLC result |
+| invariant | OperatorShareOK | <color:red><b>violated (expected)</b></color> |
+endlegend
+@enduml
+
+@startuml Sybil_unattested
+left to right direction
+skinparam shadowing false
+skinparam roundCorner 12
+title Sybil_unattested  (Sybil.tla) - negative test: a violation is expected
+header writer cannot see operators: two replicas of a chunk at one operator (violation expected)
+rectangle "Place replica\nR=2, MaxShare=2" as place #DDEEFF
+rectangle "Store physical copy" as store #DDEEFF
+rectangle "Probe answered -> paid" as paid #DDEEFF
+rectangle "Sybil operator\nSybils={i1, i2}" as syb #FFB3B3
+rectangle "Attested\nrules per operator\n(off)" as att #F2F2F2;line.dotted;line:grey
+rectangle "ReplicaBound proofs\none copy per identity" as bnd #BBEEBB
+place --> store
+store --> paid
+syb --> place
+att ..> place
+bnd --> store
+legend bottom
+|= kind |= name |= TLC result |
+| invariant | Independent | <color:red><b>violated (expected)</b></color> |
+endlegend
+@enduml

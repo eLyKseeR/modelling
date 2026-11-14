@@ -1,0 +1,67 @@
+@startuml PoS sequence
+title Proof of Storage (pos/PoS.tla): one probe
+participant Broker
+participant "Storage provider (SP)" as SP
+participant "Other provider" as O
+Broker -> SP : challenge(chunk, range, nonce)\n[sent = now]
+alt SP holds the chunk
+  SP -> Broker : HMAC(range, nonce)   (Respond, <= MaxLat ticks)
+else lost or dropped chunk
+  note over SP : no answer
+else facade: chunk fetched elsewhere
+  SP -> O : relay challenge
+  O -> SP : data
+  SP -> Broker : HMAC   (Facade, after RelayLat ticks)
+else partition (PartLen ticks)
+  note over SP : unreachable
+end
+alt answer correct and now - sent <= Budget
+  Broker -> Broker : Verify: sample 100, chunk answered
+else wrong, late, or nothing within Budget (Timeout)
+  Broker -> Broker : sample 0
+end
+Broker -> Broker : rep = (rep*(W-1) + sample) div W
+note over Broker, O
+  A facade is caught only while MaxLat <= Budget < RelayLat.
+end note
+@enduml
+
+@startuml PoS period
+title PoS period and proof
+[*] --> Probing
+Probing --> Waiting : Probe (fresh nonce,\nunanswered chunk first)
+Waiting --> Probing : Verify (answer on time)\nor Timeout
+Probing --> Closed : Close\n(nonces or time used up)
+Closed --> [*]
+Closed : proof = rep >= Thr
+Closed : and probes >= MinProbes
+Closed : and every chunk answered
+state Waiting {
+  [*] --> Open
+  Open --> Open : Tick (time passes)
+  Open --> Answered : Respond /\n Facade
+  Open --> Cut : Cut (SP unreachable\n PartLen ticks)
+  Cut --> Open : Tick
+}
+note right of Waiting
+  Deviations of the SP:
+  lost chunk (HeldInit), slow (MaxLat > Budget),
+  DropChunk, Facade (Other, RelayLat), partition (PartLen)
+end note
+@enduml
+
+@startuml PoS checked properties
+title PoS: what is checked
+rectangle "Safety" as S {
+  rectangle "TypeOK" as t1
+  rectangle "NoFalseProof\nno relayed answer accepted" as t2
+  rectangle "ProofSound\nproof => all chunks answered by a holder" as t3
+  rectangle "RepAboveThreshold\nhonest SP keeps its reputation" as t4
+  rectangle "HonestGetsProof\nhonest, fast, reachable SP gets the proof" as t5
+  rectangle "NoProof\nSP lacking a chunk never gets the proof" as t6
+}
+rectangle "Liveness" as L {
+  rectangle "Resolved\nevery probe ends" as l1
+  rectangle "Closes\nthe period ends" as l2
+}
+@enduml

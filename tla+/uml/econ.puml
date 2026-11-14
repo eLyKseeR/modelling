@@ -1,0 +1,139 @@
+@startuml econ overview
+title Model map
+actor Writer
+actor Reader
+actor Broker
+actor "Storage provider" as SP
+package "pos/" {
+  [PoS.tla\nprobe, reputation, proof] as PoS
+}
+package "econ/" {
+  [Econ.tla\nescrow, settlement,\ncancelled account] as Econ
+  [EconPoS.tla\nsettlement on the PoS proof,\nstake, SP profit] as EconPoS
+  [Restore.tla\nrestore payment policies] as Restore
+  [Replicas.tla\nre-replication, partitions] as Replicas
+  [Sybil.tla\nplacement, privacy, sybils] as Sybil
+}
+PoS --> EconPoS : INSTANCE (verdict)
+Econ ..> EconPoS : verdict abstract -> real
+Writer --> Econ : pay
+Writer --> Sybil : place chunks
+Reader --> Restore : pay per chunk
+Broker --> Replicas : probes, copies
+Broker --> Econ
+SP --> PoS
+@enduml
+
+@startuml Econ request lifecycle
+title Econ.tla: storage request
+[*] --> idle
+idle --> active : Pay\n(writer -> escrow)
+active --> judged : Prove\n(verdict pass | fail)
+judged --> paid : Settle, pass\nSP gets price - fee
+judged --> refunded : Settle, fail\nwriter gets price - fee
+note right of judged : the broker keeps the fee in both cases\nBrokerPaysAnyway: deviating broker pays on fail
+refunded --> parked : writer account closed\n(ParkRefund)
+parked --> [*] : Claim
+paid --> [*]
+refunded --> [*] : account open
+@enduml
+
+@startuml EconPoS settlement
+title EconPoS.tla: payment follows the proof
+actor Writer
+participant Broker
+participant SP
+participant "PoS period" as P
+Writer -> Broker : Pay price (escrow)
+SP -> Broker : stake (escrow)
+Broker -> P : probes the SP
+P --> Broker : closed, proof TRUE | FALSE
+alt proof TRUE
+  Broker -> SP : price - fee + stake
+else proof FALSE
+  Broker -> Writer : price - fee + stake (slashed)
+end
+Broker -> Broker : keeps fee
+note over SP
+  NoGain: SP profit <= honest profit
+  holds against lost chunks and slow relays,
+  not against: facade within deadline,
+  drop after the last probe
+end note
+@enduml
+
+@startuml Restore policies
+title Restore.tla: who risks what
+participant Reader
+participant Broker
+participant SP
+Reader -> Broker : escrow N x price
+group upfront
+  Broker -> SP : release all
+  note right : faulty SP keeps N prices
+end
+group after
+  SP -> Reader : N chunks
+  Reader -> Broker : acks
+  Broker -> SP : release all
+  note right : reader withholds acks: SP loses N prices
+end
+group perchunk
+  loop for each chunk
+    SP -> Reader : chunk k
+    Reader -> Broker : ack k
+    Broker -> SP : release price k
+  end
+  note right : either side loses at most one chunk price
+end
+group nack (any policy)
+  SP -> Reader : bad chunk k
+  Reader -> Broker : nack k
+  Broker -> SP : probe chunk k
+  alt SP answers: nack was false
+    Broker -> SP : release price k
+    note right : reader reputation down
+  else SP fails: nack was honest
+    Broker -> Reader : refund the rest
+    note right : SP reputation down, restore ends
+  end
+end
+group timeout (nobody progresses for Window ticks)
+  Broker -> Reader : refund the rest (the fee is kept)
+  note right : blame not provable: both reputations slightly down
+end
+@enduml
+
+@startuml Replicas states
+title Replicas.tla: transient failures and copies
+[*] --> Healthy : R copies
+Healthy --> Failing : Fail (<= F at once)
+Failing --> Healthy : Recover (blip: no copy)
+Failing --> Repairing : K failed checks and live copies < R\n(naive: first failed check)
+Repairing --> Surplus : Replicate to a live provider
+Surplus --> Healthy : Prune (hysteresis only)
+note right of Surplus
+  naive: never pruned, copies > R + F
+  hysteresis: BoundedCopies, Durable
+end note
+@enduml
+
+@startuml Sybil placement
+title Sybil.tla: identities, operators, copies
+rectangle "Operator A" {
+  [identity i1] as i1
+  [identity i2] as i2
+}
+[identity i3 (operator i3)] as i3
+database "physical copy" as c1
+database "physical copy" as c2
+i1 --> c1
+i2 --> c1 : without ReplicaBound:\none copy answers both
+i2 ..> c2 : with ReplicaBound:\none copy per identity
+i3 --> c2
+note bottom
+  Attested: the writer applies the placement rules per operator
+    (no operator holds > MaxShare chunks, replicas at different operators)
+  ReplicaBound: proofs bound to the identity, so payment = physical copies
+end note
+@enduml
